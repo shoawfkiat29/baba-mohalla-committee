@@ -23,6 +23,57 @@ function yearOptions(selected) {
     .join('');
 }
 
+// ---------- Row action menu (tap the ⋮ button to reveal View/Edit/Delete etc.) ----------
+
+let closeOpenActionMenu = null;
+
+function toggleActionMenu(triggerEl, items) {
+  const wasOpenForThisTrigger = triggerEl.dataset.menuOpen === '1';
+  if (closeOpenActionMenu) closeOpenActionMenu();
+  if (wasOpenForThisTrigger) return;
+
+  const menu = document.createElement('div');
+  menu.className = 'action-menu';
+  menu.innerHTML = items
+    .map((it, i) => `<button type="button" class="action-menu-item ${it.danger ? 'danger' : ''}" data-idx="${i}">${escapeHtml(it.label)}</button>`)
+    .join('');
+  document.body.appendChild(menu);
+
+  const rect = triggerEl.getBoundingClientRect();
+  const menuWidth = menu.offsetWidth;
+  const left = Math.max(8, Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - 8));
+  menu.style.top = `${rect.bottom + window.scrollY + 6}px`;
+  menu.style.left = `${left + window.scrollX}px`;
+
+  triggerEl.dataset.menuOpen = '1';
+  triggerEl.classList.add('active');
+
+  menu.querySelectorAll('.action-menu-item').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const action = items[Number(btn.dataset.idx)];
+      if (closeOpenActionMenu) closeOpenActionMenu();
+      action.onClick();
+    });
+  });
+
+  const onDocClick = (e) => {
+    if (!menu.contains(e.target) && e.target !== triggerEl) closeOpenActionMenu();
+  };
+  const onScroll = () => closeOpenActionMenu && closeOpenActionMenu();
+  document.addEventListener('click', onDocClick, true);
+  window.addEventListener('scroll', onScroll, true);
+
+  closeOpenActionMenu = () => {
+    menu.remove();
+    triggerEl.dataset.menuOpen = '0';
+    triggerEl.classList.remove('active');
+    document.removeEventListener('click', onDocClick, true);
+    window.removeEventListener('scroll', onScroll, true);
+    closeOpenActionMenu = null;
+  };
+}
+
 // ---------- Boot / top-level screen switch ----------
 
 function boot() {
@@ -204,13 +255,12 @@ function renderDashboard() {
                 .map(
                   (f) => `
                 <tr>
-                  <td data-label="Head Name">${escapeHtml(f.headName)}</td>
-                  <td data-label="Phone">${escapeHtml(f.phone)}</td>
-                  <td data-label="Members">${f.members}</td>
-                  <td data-label="Amount Due">${formatCurrency(f.members * data.settings.ratePerMember)}</td>
+                  <td>${escapeHtml(f.headName)}</td>
+                  <td>${escapeHtml(f.phone)}</td>
+                  <td>${f.members}</td>
+                  <td>${formatCurrency(f.members * data.settings.ratePerMember)}</td>
                   <td>
-                    <button class="btn-link" data-action="view-family" data-id="${f.id}">View</button>
-                    ${admin ? `<button class="btn-link" data-action="pay-family" data-id="${f.id}">Record Payment</button>` : ''}
+                    <button class="kebab-btn" data-action="row-menu" data-id="${f.id}" aria-label="Actions">&#8942;</button>
                   </td>
                 </tr>`
                 )
@@ -229,13 +279,23 @@ function renderDashboard() {
     renderDashboard();
   });
 
-  el('page-dashboard').querySelectorAll('[data-action="view-family"]').forEach((btn) => {
-    btn.addEventListener('click', () => navigateTo('family-detail', { familyId: btn.dataset.id, year: dashboardYear }));
-  });
-  el('page-dashboard').querySelectorAll('[data-action="pay-family"]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      navigateTo('family-detail', { familyId: btn.dataset.id, year: dashboardYear });
-      openRecordPaymentModal(btn.dataset.id, dashboardYear);
+  el('page-dashboard').querySelectorAll('[data-action="row-menu"]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const familyId = btn.dataset.id;
+      const items = [
+        { label: 'View', onClick: () => navigateTo('family-detail', { familyId, year: dashboardYear }) }
+      ];
+      if (admin) {
+        items.push({
+          label: 'Record Payment',
+          onClick: () => {
+            navigateTo('family-detail', { familyId, year: dashboardYear });
+            openRecordPaymentModal(familyId, dashboardYear);
+          }
+        });
+      }
+      toggleActionMenu(btn, items);
     });
   });
 }
@@ -278,28 +338,33 @@ function renderFamiliesTableBody() {
     .map(
       (f) => `
     <tr>
-      <td data-label="Head Name">${escapeHtml(f.headName)}</td>
-      <td data-label="Phone">${escapeHtml(f.phone)}</td>
-      <td data-label="Members">${f.members}</td>
-      <td data-label="Amount / Month">${formatCurrency(f.members * data.settings.ratePerMember)}</td>
+      <td>${escapeHtml(f.headName)}</td>
+      <td>${escapeHtml(f.phone)}</td>
+      <td>${f.members}</td>
+      <td>${formatCurrency(f.members * data.settings.ratePerMember)}</td>
       <td>
-        <button class="btn-link" data-action="view" data-id="${f.id}">View</button>
-        ${admin ? `<button class="btn-link" data-action="edit" data-id="${f.id}">Edit</button>` : ''}
-        ${admin ? `<button class="btn-link danger" data-action="delete" data-id="${f.id}">Delete</button>` : ''}
+        <button class="kebab-btn" data-action="row-menu" data-id="${f.id}" aria-label="Actions">&#8942;</button>
       </td>
     </tr>`
     )
     .join('');
 
-  tbody.querySelectorAll('[data-action="view"]').forEach((btn) =>
-    btn.addEventListener('click', () => navigateTo('family-detail', { familyId: btn.dataset.id, year: currentYear() }))
-  );
-  tbody.querySelectorAll('[data-action="edit"]').forEach((btn) =>
-    btn.addEventListener('click', () => openAddEditFamilyModal(btn.dataset.id))
-  );
-  tbody.querySelectorAll('[data-action="delete"]').forEach((btn) =>
-    btn.addEventListener('click', () => confirmDeleteFamily(btn.dataset.id, () => renderFamiliesTableBody()))
-  );
+  tbody.querySelectorAll('[data-action="row-menu"]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const familyId = btn.dataset.id;
+      const items = [
+        { label: 'View', onClick: () => navigateTo('family-detail', { familyId, year: currentYear() }) }
+      ];
+      if (admin) {
+        items.push(
+          { label: 'Edit', onClick: () => openAddEditFamilyModal(familyId) },
+          { label: 'Delete', danger: true, onClick: () => confirmDeleteFamily(familyId, () => renderFamiliesTableBody()) }
+        );
+      }
+      toggleActionMenu(btn, items);
+    });
+  });
 }
 
 async function confirmDeleteFamily(familyId, afterDelete) {
@@ -378,10 +443,10 @@ function renderFamilyDetail(familyId) {
                 .map(
                   (p) => `
                 <tr>
-                  <td data-label="Date">${formatDateForDisplay(p.paidOn)}</td>
-                  <td data-label="Months">${monthsListLabel(p.year, p.months)}</td>
-                  <td data-label="Amount">${formatCurrency(p.amount)}</td>
-                  <td data-label="Receipt No.">${p.receiptNo}</td>
+                  <td>${formatDateForDisplay(p.paidOn)}</td>
+                  <td>${monthsListLabel(p.year, p.months)}</td>
+                  <td>${formatCurrency(p.amount)}</td>
+                  <td>${p.receiptNo}</td>
                   <td><button class="btn-link" data-action="view-receipt" data-id="${p.id}">View Receipt</button></td>
                 </tr>`
                 )

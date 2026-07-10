@@ -313,19 +313,19 @@ label input, label select, label textarea { margin-top: 5px; }
 
 .data-table thead th {
   background: #f6f9f8;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
   color: var(--muted);
-  padding: 12px 16px;
+  padding: 10px 14px;
   text-align: left;
   border-bottom: 1px solid var(--border);
 }
 
 .data-table td {
-  padding: 13px 16px;
-  font-size: 0.92rem;
+  padding: 10px 14px;
+  font-size: 0.85rem;
   text-align: left;
 }
 .data-table tbody tr:not(:last-child) td { border-bottom: 1px solid #eef2f1; }
@@ -333,6 +333,48 @@ label input, label select, label textarea { margin-top: 5px; }
 .data-table tbody tr:hover { background: #f8fbfa; }
 
 #family-search { max-width: 340px; margin-bottom: 16px; }
+
+/* ---------- Row action menu (kebab button + popover) ---------- */
+
+.kebab-btn {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 1.15rem;
+  line-height: 1;
+  padding: 4px 10px;
+  border-radius: 8px;
+}
+.kebab-btn:hover, .kebab-btn.active { background: var(--primary-soft); color: var(--primary-deep); }
+
+.action-menu {
+  position: absolute;
+  min-width: 168px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid rgba(226, 232, 230, 0.7);
+  padding: 6px;
+  z-index: 60;
+  animation: menuDrop 0.13s ease;
+}
+@keyframes menuDrop { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+
+.action-menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.action-menu-item:hover { background: var(--primary-soft); color: var(--primary-deep); }
+.action-menu-item.danger { color: var(--danger); }
+.action-menu-item.danger:hover { background: var(--danger-soft); }
 
 /* ---------- Family detail ---------- */
 
@@ -521,47 +563,46 @@ label input, label select, label textarea { margin-top: 5px; }
   .month-checkbox-grid { grid-template-columns: repeat(3, 1fr); }
   .modal-content { padding: 22px 18px; }
 
-  /* Tables become stacked cards instead of horizontally-scrolling grids,
-     so every column and action button is reachable without side-scrolling. */
+  /* Rows stay horizontal (one line per record) at a smaller font instead of
+     scrolling sideways or stacking into tall cards. Actions collapse into a
+     single ⋮ button that opens a small tap-to-reveal menu (see .action-menu). */
   .table-wrap { overflow-x: visible; background: none; box-shadow: none; border: none; }
-  .data-table, .data-table thead, .data-table tbody, .data-table tr, .data-table td {
-    display: block;
-    width: 100%;
-    white-space: normal;
-  }
-  .data-table thead { display: none; }
+  .data-table, .data-table thead, .data-table tbody { display: block; width: 100%; }
+  .data-table tr { display: flex; align-items: center; width: 100%; gap: 6px; }
+  .data-table thead tr { padding: 0 12px 6px; }
+  .data-table thead th { background: none; padding: 0; border-bottom: none; }
+
   .data-table tbody tr {
     background: var(--card-bg);
     border: 1px solid rgba(226, 232, 230, 0.6);
-    border-radius: var(--radius);
+    border-radius: var(--radius-sm);
     box-shadow: var(--shadow-sm);
-    padding: 4px 16px;
-    margin-bottom: 12px;
+    padding: 11px 12px;
+    margin-bottom: 8px;
   }
-  .data-table tbody tr:not(:last-child) td { border-bottom: 1px solid #eef2f1; }
-  .data-table td {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 14px;
-    padding: 11px 0;
+
+  .data-table th, .data-table td {
+    display: block;
+    flex: 1 1 0;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 0;
+    font-size: 0.72rem;
+  }
+  .data-table td { font-size: 0.78rem; }
+  .data-table th:nth-child(1), .data-table td:nth-child(1) { flex: 1.6 1 0; }
+  .data-table th:nth-child(2), .data-table td:nth-child(2) { flex: 1.15 1 0; }
+  .data-table th:nth-child(3), .data-table td:nth-child(3) { flex: 0.55 1 0; text-align: center; }
+  .data-table th:nth-child(4), .data-table td:nth-child(4) { flex: 0.85 1 0; text-align: right; }
+  .data-table th:last-child, .data-table td:last-child {
+    flex: 0 0 auto;
+    width: auto;
+    overflow: visible;
     text-align: right;
   }
-  .data-table td[data-label]::before {
-    content: attr(data-label);
-    font-size: 0.72rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--muted);
-    text-align: left;
-    flex-shrink: 0;
-  }
-  .data-table td:not([data-label]) {
-    justify-content: flex-start;
-    flex-wrap: wrap;
-    gap: 4px;
-    padding-top: 13px;
-  }
+
+  .kebab-btn { padding: 2px 6px; font-size: 1.05rem; }
   .login-card { padding: 32px 24px; }
 }
