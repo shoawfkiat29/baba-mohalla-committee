@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Baba Mohalla Committee</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <!-- Login screen -->
+  <div id="login-screen" class="screen">
+    <div class="login-card">
+      <h1>Baba Mohalla Committee</h1>
+      <p class="muted">Choose how you'd like to continue.</p>
+
+      <button id="btn-show-admin-login" class="btn-primary full-width">Login as Admin</button>
+      <button id="btn-viewer-login" class="btn-secondary full-width">Continue as Viewer</button>
+
+      <form id="admin-login-form" class="hidden">
+        <label>Admin Password
+          <input type="password" id="admin-password" autocomplete="current-password" />
+        </label>
+        <div class="modal-actions">
+          <button type="button" id="btn-admin-cancel" class="btn-secondary">Cancel</button>
+          <button type="submit" class="btn-primary">Login</button>
+        </div>
+      </form>
+      <p class="form-error" id="login-error"></p>
+      <p class="muted small">Default admin password: <code>admin123</code> — change it from Settings after logging in.</p>
+    </div>
+  </div>
+
+  <!-- Main app -->
+  <div id="app-screen" class="screen hidden">
+    <header class="app-header">
+      <div class="app-title">
+        <span id="app-committee-name">Baba Mohalla Committee</span>
+        <span id="app-role-badge" class="role-badge"></span>
+      </div>
+      <nav class="app-nav">
+        <button id="tab-dashboard" class="nav-tab">Dashboard</button>
+        <button id="tab-families" class="nav-tab">Families</button>
+        <button id="tab-settings" class="nav-tab hidden">Settings</button>
+        <button id="btn-logout" class="btn-secondary">Logout</button>
+      </nav>
+    </header>
+
+    <main class="app-main">
+      <section id="page-dashboard" class="page"></section>
+      <section id="page-families" class="page hidden"></section>
+      <section id="page-family-detail" class="page hidden"></section>
+      <section id="page-settings" class="page hidden"></section>
+    </main>
+  </div>
+
+  <!-- Modal overlay -->
+  <div id="modal-overlay" class="modal-overlay hidden">
+    <div id="modal-content" class="modal-content"></div>
+  </div>
+
+  <script src="js/utils.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/families.js"></script>
+  <script src="js/payments.js"></script>
+  <script src="js/whatsapp.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
