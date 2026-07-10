@@ -255,12 +255,12 @@ function renderDashboard() {
                 .map(
                   (f) => `
                 <tr>
-                  <td>${escapeHtml(f.headName)}</td>
+                  <td><button class="row-name-link" data-action="open-family" data-id="${f.id}">${escapeHtml(f.headName)}</button></td>
                   <td>${escapeHtml(f.phone)}</td>
                   <td>${f.members}</td>
                   <td>${formatCurrency(f.members * data.settings.ratePerMember)}</td>
                   <td>
-                    <button class="kebab-btn" data-action="row-menu" data-id="${f.id}" aria-label="Actions">&#8942;</button>
+                    ${admin ? `<button class="kebab-btn" data-action="row-menu" data-id="${f.id}" aria-label="Actions">&#8942;</button>` : ''}
                   </td>
                 </tr>`
                 )
@@ -279,22 +279,23 @@ function renderDashboard() {
     renderDashboard();
   });
 
+  el('page-dashboard').querySelectorAll('[data-action="open-family"]').forEach((btn) => {
+    btn.addEventListener('click', () => navigateTo('family-detail', { familyId: btn.dataset.id, year: dashboardYear }));
+  });
+
   el('page-dashboard').querySelectorAll('[data-action="row-menu"]').forEach((btn) => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const familyId = btn.dataset.id;
       const items = [
-        { label: 'View', onClick: () => navigateTo('family-detail', { familyId, year: dashboardYear }) }
-      ];
-      if (admin) {
-        items.push({
+        {
           label: 'Record Payment',
           onClick: () => {
             navigateTo('family-detail', { familyId, year: dashboardYear });
             openRecordPaymentModal(familyId, dashboardYear);
           }
-        });
-      }
+        }
+      ];
       toggleActionMenu(btn, items);
     });
   });
@@ -338,30 +339,29 @@ function renderFamiliesTableBody() {
     .map(
       (f) => `
     <tr>
-      <td>${escapeHtml(f.headName)}</td>
+      <td><button class="row-name-link" data-action="open-family" data-id="${f.id}">${escapeHtml(f.headName)}</button></td>
       <td>${escapeHtml(f.phone)}</td>
       <td>${f.members}</td>
       <td>${formatCurrency(f.members * data.settings.ratePerMember)}</td>
       <td>
-        <button class="kebab-btn" data-action="row-menu" data-id="${f.id}" aria-label="Actions">&#8942;</button>
+        ${admin ? `<button class="kebab-btn" data-action="row-menu" data-id="${f.id}" aria-label="Actions">&#8942;</button>` : ''}
       </td>
     </tr>`
     )
     .join('');
+
+  tbody.querySelectorAll('[data-action="open-family"]').forEach((btn) => {
+    btn.addEventListener('click', () => navigateTo('family-detail', { familyId: btn.dataset.id, year: currentYear() }));
+  });
 
   tbody.querySelectorAll('[data-action="row-menu"]').forEach((btn) => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const familyId = btn.dataset.id;
       const items = [
-        { label: 'View', onClick: () => navigateTo('family-detail', { familyId, year: currentYear() }) }
+        { label: 'Edit', onClick: () => openAddEditFamilyModal(familyId) },
+        { label: 'Delete', danger: true, onClick: () => confirmDeleteFamily(familyId, () => renderFamiliesTableBody()) }
       ];
-      if (admin) {
-        items.push(
-          { label: 'Edit', onClick: () => openAddEditFamilyModal(familyId) },
-          { label: 'Delete', danger: true, onClick: () => confirmDeleteFamily(familyId, () => renderFamiliesTableBody()) }
-        );
-      }
       toggleActionMenu(btn, items);
     });
   });
@@ -372,7 +372,7 @@ async function confirmDeleteFamily(familyId, afterDelete) {
   if (!family) return;
   const count = familyPaymentCount(familyId);
   const msg = count > 0
-    ? `Delete ${family.headName}? This will also delete ${count} payment record(s) on ALL devices. This cannot be undone.`
+    ? `Delete ${family.headName}? This will also delete ${count} transaction record(s) on ALL devices. This cannot be undone.`
     : `Delete ${family.headName}? This cannot be undone.`;
   if (!confirm(msg)) return;
   try {
@@ -393,7 +393,8 @@ function renderFamilyDetail(familyId) {
   }
   const admin = isAdmin();
   const paidMonths = getPaidMonthsForYear(familyId, familyDetailYear);
-  const history = getPaymentsForFamily(familyId);
+  const history = getTransactionsForFamily(familyId);
+  const advanceBalance = family.advanceBalance || 0;
 
   el('page-family-detail').innerHTML = `
     <button class="btn-link back-link" id="btn-back-to-families">&larr; Back to Families</button>
@@ -410,6 +411,7 @@ function renderFamilyDetail(familyId) {
       <div><strong>Phone:</strong> ${escapeHtml(family.phone)}</div>
       <div><strong>Members:</strong> ${family.members}</div>
       <div><strong>Amount / Month:</strong> ${formatCurrency(family.members * data.settings.ratePerMember)}</div>
+      <div><strong>Advance Balance:</strong> ${formatCurrency(advanceBalance)}</div>
       ${family.address ? `<div><strong>Address:</strong> ${escapeHtml(family.address)}</div>` : ''}
       ${family.notes ? `<div><strong>Notes:</strong> ${escapeHtml(family.notes)}</div>` : ''}
     </div>
@@ -425,29 +427,33 @@ function renderFamilyDetail(familyId) {
     </div>
     <p class="summary-line">
       Collected in ${familyDetailYear}: <strong>${formatCurrency(
-        history.filter((p) => p.year === familyDetailYear).reduce((s, p) => s + p.amount, 0)
+        history.filter((p) => p.year === familyDetailYear).reduce((s, p) => s + cashCollectedOf(p), 0)
       )}</strong>
-      &nbsp;|&nbsp; All-time: <strong>${formatCurrency(history.reduce((s, p) => s + p.amount, 0))}</strong>
+      &nbsp;|&nbsp; All-time: <strong>${formatCurrency(history.reduce((s, p) => s + cashCollectedOf(p), 0))}</strong>
       &nbsp;|&nbsp; Outstanding months this year: <strong>${12 - paidMonths.size}</strong>
     </p>
-    ${admin ? `<button class="btn-primary" id="btn-record-payment">Record Payment</button>` : ''}
+    ${admin ? `
+      <div class="btn-row">
+        <button class="btn-primary" id="btn-record-payment">Record Payment</button>
+        <button class="btn-secondary" id="btn-add-advance">Add Advance</button>
+      </div>` : ''}
 
-    <h3>Payment History</h3>
+    <h3>Transaction History</h3>
     ${
       history.length === 0
-        ? '<p class="empty-note">No payments recorded yet.</p>'
+        ? '<p class="empty-note">No transactions recorded yet.</p>'
         : `<div class="table-wrap"><table class="data-table">
-            <thead><tr><th>Date</th><th>Months</th><th>Amount</th><th>Receipt No.</th><th></th></tr></thead>
+            <thead><tr><th>Date</th><th>For</th><th>Amount</th><th>Receipt No.</th><th></th></tr></thead>
             <tbody>
               ${history
                 .map(
                   (p) => `
                 <tr>
                   <td>${formatDateForDisplay(p.paidOn)}</td>
-                  <td>${monthsListLabel(p.year, p.months)}</td>
+                  <td>${p.type === 'advance' ? '<span class="type-badge">Advance</span>' : escapeHtml(monthsListLabel(p.year, p.months))}</td>
                   <td>${formatCurrency(p.amount)}</td>
                   <td>${p.receiptNo}</td>
-                  <td><button class="btn-link" data-action="view-receipt" data-id="${p.id}">View Receipt</button></td>
+                  <td><button class="kebab-btn" data-action="txn-menu" data-id="${p.id}" aria-label="Actions">&#8942;</button></td>
                 </tr>`
                 )
                 .join('')}
@@ -461,9 +467,18 @@ function renderFamilyDetail(familyId) {
     familyDetailYear = Number(e.target.value);
     renderFamilyDetail(familyId);
   });
-  el('page-family-detail').querySelectorAll('[data-action="view-receipt"]').forEach((btn) =>
-    btn.addEventListener('click', () => openReceiptModal(getPayment(btn.dataset.id)))
-  );
+
+  el('page-family-detail').querySelectorAll('[data-action="txn-menu"]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const txnId = btn.dataset.id;
+      const items = [{ label: 'View Receipt', onClick: () => openReceiptModal(getPayment(txnId)) }];
+      if (admin) {
+        items.push({ label: 'Delete', danger: true, onClick: () => confirmDeleteTransaction(txnId, familyId) });
+      }
+      toggleActionMenu(btn, items);
+    });
+  });
 
   if (admin) {
     el('btn-edit-family').addEventListener('click', () => openAddEditFamilyModal(familyId));
@@ -471,6 +486,22 @@ function renderFamilyDetail(familyId) {
       confirmDeleteFamily(familyId, () => navigateTo('families'))
     );
     el('btn-record-payment').addEventListener('click', () => openRecordPaymentModal(familyId, familyDetailYear));
+    el('btn-add-advance').addEventListener('click', () => openAddAdvanceModal(familyId));
+  }
+}
+
+async function confirmDeleteTransaction(txnId, familyId) {
+  const txn = getPayment(txnId);
+  if (!txn) return;
+  const msg = txn.type === 'advance'
+    ? `Delete this advance deposit of ${formatCurrency(txn.amount)}? The family's advance balance will be reduced accordingly.`
+    : `Delete this payment for ${monthsListLabel(txn.year, txn.months)} (${formatCurrency(txn.amount)})? Those months will become unpaid again${txn.advanceApplied ? ', and the advance used will be refunded to the balance' : ''}.`;
+  if (!confirm(msg)) return;
+  try {
+    await deleteTransaction(txnId);
+    if (currentPage === 'family-detail') renderFamilyDetail(familyId);
+  } catch (err) {
+    alert('Delete failed: ' + err.message);
   }
 }
 
@@ -697,6 +728,7 @@ function openRecordPaymentModal(familyId, prefillYear) {
 
   const renderBody = () => {
     const paidMonths = getPaidMonthsForYear(familyId, year);
+    const advanceBalance = family.advanceBalance || 0;
     return `
       <h3>Record Payment - ${escapeHtml(family.headName)}</h3>
       <label>Year <select id="rp-year">${yearOptions(year)}</select></label>
@@ -712,7 +744,14 @@ function openRecordPaymentModal(familyId, prefillYear) {
             </label>`;
         }).join('')}
       </div>
-      <div class="amount-display">Amount: <strong id="rp-amount">₹0</strong></div>
+      <div class="amount-display" id="rp-amount-box">
+        <div>Dues Amount: <strong id="rp-dues">₹0</strong></div>
+        ${advanceBalance > 0 ? `<div>Advance Applied: <strong id="rp-advance-applied">₹0</strong> <span class="muted">(balance: ${formatCurrency(advanceBalance)})</span></div>` : ''}
+        <div>Amount to Collect Now: <strong id="rp-collect-now">₹0</strong></div>
+      </div>
+      <label>Extra Amount Received (optional, banked as advance for future months)
+        <input type="number" id="rp-extra" min="0" value="0" />
+      </label>
       <label>Payment Date <input type="date" id="rp-date" value="${todayISO()}" /></label>
       <label>Note (optional) <input type="text" id="rp-note" /></label>
       <p class="form-error" id="rp-error"></p>
@@ -731,13 +770,20 @@ function openRecordPaymentModal(familyId, prefillYear) {
       wireBody();
     });
 
+    const advanceBalance = family.advanceBalance || 0;
     const updateAmount = () => {
       const checked = el('rp-month-grid').querySelectorAll('input[type="checkbox"]:checked:not(:disabled)');
-      el('rp-amount').textContent = formatCurrency(calculateAmount(family.members, data.settings.ratePerMember, checked.length));
+      const dues = calculateAmount(family.members, data.settings.ratePerMember, checked.length);
+      const advanceApplied = Math.min(advanceBalance, dues);
+      const extra = Math.max(0, Number(el('rp-extra').value) || 0);
+      el('rp-dues').textContent = formatCurrency(dues);
+      if (el('rp-advance-applied')) el('rp-advance-applied').textContent = formatCurrency(advanceApplied);
+      el('rp-collect-now').textContent = formatCurrency(dues - advanceApplied + extra);
     };
     el('rp-month-grid').querySelectorAll('input[type="checkbox"]').forEach((cb) => {
       cb.addEventListener('change', updateAmount);
     });
+    el('rp-extra').addEventListener('input', updateAmount);
     updateAmount();
 
     el('rp-cancel').addEventListener('click', closeModal);
@@ -757,7 +803,8 @@ function openRecordPaymentModal(familyId, prefillYear) {
           year,
           months,
           paidOn: el('rp-date').value || todayISO(),
-          note: el('rp-note').value
+          note: el('rp-note').value,
+          extraAdvance: el('rp-extra').value
         });
         if (result.error) {
           el('rp-error').textContent = result.error;
@@ -777,6 +824,58 @@ function openRecordPaymentModal(familyId, prefillYear) {
 
   openModal(renderBody());
   wireBody();
+}
+
+// ---------- Modal: Add Advance ----------
+
+function openAddAdvanceModal(familyId) {
+  const family = getFamily(familyId);
+  if (!family) return;
+
+  openModal(`
+    <h3>Add Advance - ${escapeHtml(family.headName)}</h3>
+    <p class="muted">Record extra money kept with the committee that isn't tied to specific months yet. It will be automatically applied to dues next time a payment is recorded.</p>
+    <label>Amount Received <input type="number" id="adv-amount" min="1" required /></label>
+    <label>Date <input type="date" id="adv-date" value="${todayISO()}" /></label>
+    <label>Note (optional) <input type="text" id="adv-note" /></label>
+    <p class="form-error" id="adv-error"></p>
+    <div class="modal-actions">
+      <button type="button" class="btn-secondary" id="adv-cancel">Cancel</button>
+      <button type="button" class="btn-primary" id="adv-save">Save Advance</button>
+    </div>
+  `);
+
+  el('adv-cancel').addEventListener('click', closeModal);
+  el('adv-save').addEventListener('click', async () => {
+    const amount = Number(el('adv-amount').value);
+    if (!amount || amount <= 0) {
+      el('adv-error').textContent = 'Enter an amount greater than zero.';
+      return;
+    }
+    const saveBtn = el('adv-save');
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving...';
+    try {
+      const result = await recordAdvance({
+        familyId,
+        amount,
+        paidOn: el('adv-date').value || todayISO(),
+        note: el('adv-note').value
+      });
+      if (result.error) {
+        el('adv-error').textContent = result.error;
+        return;
+      }
+      closeModal();
+      refreshCurrentPage();
+      openReceiptModal(result.advance);
+    } catch (err) {
+      el('adv-error').textContent = 'Save failed: ' + err.message;
+    } finally {
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'Save Advance';
+    }
+  });
 }
 
 // ---------- Modal: Receipt ----------

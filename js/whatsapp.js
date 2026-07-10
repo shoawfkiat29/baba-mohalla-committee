@@ -7,7 +7,13 @@ function normalizePhoneForWhatsApp(phone) {
 }
 
 function buildReceiptMessage(payment, family, settings) {
+  if (payment.type === 'advance') return buildAdvanceMessage(payment, family, settings);
+
   const monthsLabel = monthsListLabel(payment.year, payment.months);
+  const advanceApplied = payment.advanceApplied || 0;
+  const advanceAdded = payment.advanceAdded || 0;
+  const cashCollected = cashCollectedOf(payment);
+
   const lines = [
     `Asalamualaikum ${family.headName} Ji,`,
     '',
@@ -17,10 +23,40 @@ function buildReceiptMessage(payment, family, settings) {
     `Family Members: ${payment.membersAtPayment}`,
     `Months Paid: ${monthsLabel}`,
     `Rate: ${formatCurrency(payment.ratePerMember)} / member / month`,
-    `Total Amount: ${formatCurrency(payment.amount)}`
+    `Dues Amount: ${formatCurrency(payment.amount)}`
   ];
+  if (advanceApplied > 0) {
+    lines.push(`Advance Used: ${formatCurrency(advanceApplied)}`);
+  }
+  if (advanceAdded > 0) {
+    lines.push(`Extra Added to Advance: ${formatCurrency(advanceAdded)}`);
+  }
+  lines.push(`Amount Collected: ${formatCurrency(cashCollected)}`);
+  if (typeof payment.newAdvanceBalance === 'number') {
+    lines.push(`Remaining Advance Balance: ${formatCurrency(payment.newAdvanceBalance)}`);
+  }
   if (payment.note) {
     lines.push(`Note: ${payment.note}`);
+  }
+  lines.push('', 'Thank you for your contribution.', `- ${settings.committeeName}`);
+  return lines.join('\n');
+}
+
+function buildAdvanceMessage(advance, family, settings) {
+  const lines = [
+    `Asalamualaikum ${family.headName} Ji,`,
+    '',
+    `Advance receipt - ${settings.committeeName}`,
+    `Receipt No: ${advance.receiptNo}`,
+    `Date: ${formatDateForDisplay(advance.paidOn)}`,
+    `Amount Received: ${formatCurrency(advance.amount)}`
+  ];
+  if (typeof advance.newAdvanceBalance === 'number') {
+    lines.push(`Total Advance Balance: ${formatCurrency(advance.newAdvanceBalance)}`);
+  }
+  lines.push('This will be automatically adjusted against your dues in the coming months.');
+  if (advance.note) {
+    lines.push(`Note: ${advance.note}`);
   }
   lines.push('', 'Thank you for your contribution.', `- ${settings.committeeName}`);
   return lines.join('\n');

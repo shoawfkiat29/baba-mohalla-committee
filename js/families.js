@@ -9,6 +9,7 @@ async function addFamily(fields) {
     members: Number(fields.members),
     address: (fields.address || '').trim(),
     notes: (fields.notes || '').trim(),
+    advanceBalance: 0,
     createdAt: todayISO()
   });
   return id;
