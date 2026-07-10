@@ -204,10 +204,10 @@ function renderDashboard() {
                 .map(
                   (f) => `
                 <tr>
-                  <td>${escapeHtml(f.headName)}</td>
-                  <td>${escapeHtml(f.phone)}</td>
-                  <td>${f.members}</td>
-                  <td>${formatCurrency(f.members * data.settings.ratePerMember)}</td>
+                  <td data-label="Head Name">${escapeHtml(f.headName)}</td>
+                  <td data-label="Phone">${escapeHtml(f.phone)}</td>
+                  <td data-label="Members">${f.members}</td>
+                  <td data-label="Amount Due">${formatCurrency(f.members * data.settings.ratePerMember)}</td>
                   <td>
                     <button class="btn-link" data-action="view-family" data-id="${f.id}">View</button>
                     ${admin ? `<button class="btn-link" data-action="pay-family" data-id="${f.id}">Record Payment</button>` : ''}
@@ -278,10 +278,10 @@ function renderFamiliesTableBody() {
     .map(
       (f) => `
     <tr>
-      <td>${escapeHtml(f.headName)}</td>
-      <td>${escapeHtml(f.phone)}</td>
-      <td>${f.members}</td>
-      <td>${formatCurrency(f.members * data.settings.ratePerMember)}</td>
+      <td data-label="Head Name">${escapeHtml(f.headName)}</td>
+      <td data-label="Phone">${escapeHtml(f.phone)}</td>
+      <td data-label="Members">${f.members}</td>
+      <td data-label="Amount / Month">${formatCurrency(f.members * data.settings.ratePerMember)}</td>
       <td>
         <button class="btn-link" data-action="view" data-id="${f.id}">View</button>
         ${admin ? `<button class="btn-link" data-action="edit" data-id="${f.id}">Edit</button>` : ''}
@@ -378,10 +378,10 @@ function renderFamilyDetail(familyId) {
                 .map(
                   (p) => `
                 <tr>
-                  <td>${formatDateForDisplay(p.paidOn)}</td>
-                  <td>${monthsListLabel(p.year, p.months)}</td>
-                  <td>${formatCurrency(p.amount)}</td>
-                  <td>${p.receiptNo}</td>
+                  <td data-label="Date">${formatDateForDisplay(p.paidOn)}</td>
+                  <td data-label="Months">${monthsListLabel(p.year, p.months)}</td>
+                  <td data-label="Amount">${formatCurrency(p.amount)}</td>
+                  <td data-label="Receipt No.">${p.receiptNo}</td>
                   <td><button class="btn-link" data-action="view-receipt" data-id="${p.id}">View Receipt</button></td>
                 </tr>`
                 )
