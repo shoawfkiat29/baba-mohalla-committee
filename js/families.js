@@ -1,43 +1,47 @@
-// CRUD helpers for family records.
+// Family reads come from the live mirror (synchronous); writes go to Firestore.
 
-function addFamily(data, fields) {
-  const family = {
-    id: generateId('fam'),
+async function addFamily(fields) {
+  const { db, doc, setDoc } = window.fb;
+  const id = generateId('fam');
+  await setDoc(doc(db, 'families', id), {
     headName: fields.headName.trim(),
     phone: fields.phone.trim(),
     members: Number(fields.members),
     address: (fields.address || '').trim(),
     notes: (fields.notes || '').trim(),
     createdAt: todayISO()
-  };
-  data.families.push(family);
-  saveData(data);
-  return family;
+  });
+  return id;
 }
 
-function updateFamily(data, id, fields) {
-  const family = getFamily(data, id);
-  if (!family) return null;
-  family.headName = fields.headName.trim();
-  family.phone = fields.phone.trim();
-  family.members = Number(fields.members);
-  family.address = (fields.address || '').trim();
-  family.notes = (fields.notes || '').trim();
-  saveData(data);
-  return family;
+async function updateFamily(id, fields) {
+  const { db, doc, setDoc } = window.fb;
+  await setDoc(
+    doc(db, 'families', id),
+    {
+      headName: fields.headName.trim(),
+      phone: fields.phone.trim(),
+      members: Number(fields.members),
+      address: (fields.address || '').trim(),
+      notes: (fields.notes || '').trim()
+    },
+    { merge: true }
+  );
 }
 
-function deleteFamily(data, id) {
-  data.families = data.families.filter((f) => f.id !== id);
-  data.payments = data.payments.filter((p) => p.familyId !== id);
-  saveData(data);
+async function deleteFamily(id) {
+  const { db, doc, writeBatch } = window.fb;
+  const batch = writeBatch(db);
+  batch.delete(doc(db, 'families', id));
+  data.payments.filter((p) => p.familyId === id).forEach((p) => batch.delete(doc(db, 'payments', p.id)));
+  await batch.commit();
 }
 
-function getFamily(data, id) {
+function getFamily(id) {
   return data.families.find((f) => f.id === id) || null;
 }
 
-function searchFamilies(data, query) {
+function searchFamilies(query) {
   const q = (query || '').trim().toLowerCase();
   const list = [...data.families].sort((a, b) => a.headName.localeCompare(b.headName));
   if (!q) return list;
@@ -46,6 +50,6 @@ function searchFamilies(data, query) {
   );
 }
 
-function familyPaymentCount(data, familyId) {
+function familyPaymentCount(familyId) {
   return data.payments.filter((p) => p.familyId === familyId).length;
 }

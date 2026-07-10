@@ -40,14 +40,6 @@ function generateId(prefix) {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
-async function sha256Hex(text) {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(text);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
-}
-
 function monthsListLabel(year, months) {
   const sorted = [...months].sort((a, b) => a - b);
   return sorted.map((m) => `${MONTH_SHORT[m - 1]} ${year}`).join(', ');

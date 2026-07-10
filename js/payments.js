@@ -1,10 +1,12 @@
-// Payment recording, receipt numbering, and dues calculations.
+// Payment recording and dues calculations. Reads use the live mirror; the
+// receipt number is issued inside a transaction so two devices recording at
+// the same time can never get the same number.
 
 function calculateAmount(members, ratePerMember, monthsCount) {
   return Number(members) * Number(ratePerMember) * Number(monthsCount);
 }
 
-function getPaidMonthsForYear(data, familyId, year) {
+function getPaidMonthsForYear(familyId, year) {
   const paid = new Set();
   data.payments
     .filter((p) => p.familyId === familyId && p.year === year)
@@ -12,65 +14,67 @@ function getPaidMonthsForYear(data, familyId, year) {
   return paid;
 }
 
-function nextReceiptNo(data) {
-  const year = currentYear();
-  const num = String(data.settings.receiptCounter).padStart(4, '0');
-  return `${data.settings.receiptPrefix}-${year}-${num}`;
-}
-
 // Returns { payment } on success, or { error } if all requested months are already paid.
-function recordPayment(data, { familyId, year, months, paidOn, note }) {
-  const family = getFamily(data, familyId);
+async function recordPayment({ familyId, year, months, paidOn, note }) {
+  const family = getFamily(familyId);
   if (!family) return { error: 'Family not found.' };
 
-  const alreadyPaid = getPaidMonthsForYear(data, familyId, year);
+  const alreadyPaid = getPaidMonthsForYear(familyId, year);
   const newMonths = months.filter((m) => !alreadyPaid.has(m));
   if (newMonths.length === 0) {
     return { error: 'All selected months are already marked as paid.' };
   }
 
-  const amount = calculateAmount(family.members, data.settings.ratePerMember, newMonths.length);
-  const payment = {
-    id: generateId('pay'),
-    familyId,
-    year,
-    months: newMonths.sort((a, b) => a - b),
-    membersAtPayment: family.members,
-    ratePerMember: data.settings.ratePerMember,
-    amount,
-    paidOn: paidOn || todayISO(),
-    note: (note || '').trim(),
-    receiptNo: nextReceiptNo(data),
-    createdAt: new Date().toISOString()
-  };
+  const { db, doc, runTransaction } = window.fb;
+  const payRef = doc(db, 'payments', generateId('pay'));
 
-  data.payments.push(payment);
-  data.settings.receiptCounter += 1;
-  saveData(data);
+  const payment = await runTransaction(db, async (tx) => {
+    const snap = await tx.get(settingsRef());
+    const settings = { ...getDefaultSettings(), ...(snap.exists() ? snap.data() : {}) };
+    const receiptNo = `${settings.receiptPrefix}-${currentYear()}-${String(settings.receiptCounter).padStart(4, '0')}`;
+
+    const fields = {
+      familyId,
+      year,
+      months: [...newMonths].sort((a, b) => a - b),
+      membersAtPayment: family.members,
+      ratePerMember: settings.ratePerMember,
+      amount: calculateAmount(family.members, settings.ratePerMember, newMonths.length),
+      paidOn: paidOn || todayISO(),
+      note: (note || '').trim(),
+      receiptNo,
+      createdAt: new Date().toISOString()
+    };
+
+    tx.set(payRef, fields);
+    tx.set(settingsRef(), { ...settings, receiptCounter: settings.receiptCounter + 1 });
+    return { id: payRef.id, ...fields };
+  });
+
   return { payment };
 }
 
-function getPaymentsForFamily(data, familyId) {
+function getPaymentsForFamily(familyId) {
   return data.payments
     .filter((p) => p.familyId === familyId)
     .sort((a, b) => (a.paidOn < b.paidOn ? 1 : -1));
 }
 
-function getPayment(data, id) {
+function getPayment(id) {
   return data.payments.find((p) => p.id === id) || null;
 }
 
-function totalCollectedAllTime(data) {
+function totalCollectedAllTime() {
   return data.payments.reduce((sum, p) => sum + p.amount, 0);
 }
 
-function totalCollectedForYear(data, year) {
+function totalCollectedForYear(year) {
   return data.payments.filter((p) => p.year === year).reduce((sum, p) => sum + p.amount, 0);
 }
 
-function getPendingFamiliesForMonth(data, year, month) {
+function getPendingFamiliesForMonth(year, month) {
   return data.families.filter((f) => {
-    const paid = getPaidMonthsForYear(data, f.id, year);
+    const paid = getPaidMonthsForYear(f.id, year);
     return !paid.has(month);
   });
 }

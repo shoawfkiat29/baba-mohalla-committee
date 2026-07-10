@@ -1,11 +1,13 @@
-// Main UI: rendering, navigation, and event wiring. Vanilla JS, no framework, no build step.
+// Main UI: rendering, navigation, and event wiring. Vanilla JS, no build step.
+// Data arrives via Firestore snapshot listeners; every change re-renders the
+// current page so all devices stay on the exact same live data.
 
-let data = loadData();
 let currentPage = 'dashboard';
 let currentFamilyId = null;
 let dashboardYear = currentYear();
 let dashboardMonth = currentMonth();
 let familyDetailYear = currentYear();
+let familySearchQuery = '';
 
 function el(id) {
   return document.getElementById(id);
@@ -26,7 +28,31 @@ function yearOptions(selected) {
 function boot() {
   wireLoginScreen();
   wireGlobalChrome();
-  renderApp();
+
+  if (window.fb === undefined) {
+    showLoginNotice('Could not load. Check your internet connection and reload the page.');
+    return;
+  }
+  if (window.fb === null) {
+    showLoginNotice('Cloud sync is not configured yet. The app will work once setup is completed.');
+    return;
+  }
+
+  window.fb.onAuthStateChanged(window.fb.auth, (user) => {
+    setFbUser(user);
+    renderApp();
+  });
+
+  startDataSync(() => {
+    refreshCurrentPage();
+  });
+}
+
+function showLoginNotice(message) {
+  el('setup-notice').textContent = message;
+  el('setup-notice').classList.remove('hidden');
+  el('btn-show-admin-login').disabled = true;
+  el('btn-viewer-login').disabled = true;
 }
 
 function renderApp() {
@@ -45,11 +71,21 @@ function renderApp() {
   navigateTo('dashboard');
 }
 
+// Re-renders whatever page is showing when cloud data changes.
+function refreshCurrentPage() {
+  if (!getRole() || el('app-screen').classList.contains('hidden')) return;
+  el('app-committee-name').textContent = data.settings.committeeName;
+  if (currentPage === 'dashboard') renderDashboard();
+  if (currentPage === 'families') renderFamiliesPage();
+  if (currentPage === 'family-detail') renderFamilyDetail(currentFamilyId);
+  // Settings page holds form state the user may be typing in; don't clobber it.
+}
+
 function wireLoginScreen() {
   el('btn-show-admin-login').addEventListener('click', () => {
     el('admin-login-form').classList.remove('hidden');
     el('login-error').textContent = '';
-    el('admin-password').focus();
+    el('admin-email').focus();
   });
 
   el('btn-admin-cancel').addEventListener('click', () => {
@@ -60,29 +96,32 @@ function wireLoginScreen() {
 
   el('admin-login-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const password = el('admin-password').value;
-    const ok = await verifyAdminPassword(data, password);
-    if (ok) {
-      setRole('admin');
+    el('login-error').textContent = '';
+    const btn = el('btn-admin-submit');
+    btn.disabled = true;
+    btn.textContent = 'Logging in...';
+    try {
+      await adminLogin(el('admin-email').value.trim(), el('admin-password').value);
       el('admin-password').value = '';
       el('admin-login-form').classList.add('hidden');
-      renderApp();
-    } else {
-      el('login-error').textContent = 'Incorrect password. Try again.';
-      el('admin-password').value = '';
-      el('admin-password').focus();
+      // onAuthStateChanged triggers renderApp()
+    } catch (err) {
+      el('login-error').textContent = friendlyAuthError(err);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Login';
     }
   });
 
   el('btn-viewer-login').addEventListener('click', () => {
-    setRole('viewer');
+    enterViewer();
     renderApp();
   });
 }
 
 function wireGlobalChrome() {
-  el('btn-logout').addEventListener('click', () => {
-    clearRole();
+  el('btn-logout').addEventListener('click', async () => {
+    await logoutAll();
     renderApp();
   });
 
@@ -101,7 +140,7 @@ function navigateTo(page, params = {}) {
     el(`page-${p}`).classList.toggle('hidden', p !== page);
   });
   ['dashboard', 'families', 'settings'].forEach((p) => {
-    el(`tab-${p}`).classList.toggle('active', p === page);
+    el(`tab-${p}`).classList.toggle('active', p === page || (page === 'family-detail' && p === 'families'));
   });
 
   if (page === 'dashboard') renderDashboard();
@@ -118,7 +157,7 @@ function navigateTo(page, params = {}) {
 
 function renderDashboard() {
   const admin = isAdmin();
-  const pending = getPendingFamiliesForMonth(data, dashboardYear, dashboardMonth);
+  const pending = getPendingFamiliesForMonth(dashboardYear, dashboardMonth);
 
   el('page-dashboard').innerHTML = `
     <div class="page-header">
@@ -142,11 +181,11 @@ function renderDashboard() {
       </div>
       <div class="stat-card">
         <div class="stat-label">Collected in ${dashboardYear}</div>
-        <div class="stat-value">${formatCurrency(totalCollectedForYear(data, dashboardYear))}</div>
+        <div class="stat-value">${formatCurrency(totalCollectedForYear(dashboardYear))}</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">Collected All-Time</div>
-        <div class="stat-value">${formatCurrency(totalCollectedAllTime(data))}</div>
+        <div class="stat-value">${formatCurrency(totalCollectedAllTime())}</div>
       </div>
       <div class="stat-card warn">
         <div class="stat-label">Pending - ${MONTH_NAMES[dashboardMonth - 1]} ${dashboardYear}</div>
@@ -158,7 +197,7 @@ function renderDashboard() {
     ${
       pending.length === 0
         ? '<p class="empty-note">Everyone has paid for this month. 🎉</p>'
-        : `<table class="data-table">
+        : `<div class="table-wrap"><table class="data-table">
             <thead><tr><th>Head Name</th><th>Phone</th><th>Members</th><th>Amount Due</th><th></th></tr></thead>
             <tbody>
               ${pending
@@ -177,7 +216,7 @@ function renderDashboard() {
                 )
                 .join('')}
             </tbody>
-          </table>`
+          </table></div>`
     }
   `;
 
@@ -203,8 +242,6 @@ function renderDashboard() {
 
 // ---------- Families list ----------
 
-let familySearchQuery = '';
-
 function renderFamiliesPage() {
   const admin = isAdmin();
   el('page-families').innerHTML = `
@@ -213,10 +250,10 @@ function renderFamiliesPage() {
       ${admin ? `<button class="btn-primary" id="btn-add-family">+ Add Family</button>` : ''}
     </div>
     <input type="text" id="family-search" placeholder="Search by name or phone..." value="${escapeHtml(familySearchQuery)}" />
-    <table class="data-table">
+    <div class="table-wrap"><table class="data-table">
       <thead><tr><th>Head Name</th><th>Phone</th><th>Members</th><th>Amount / Month</th><th></th></tr></thead>
       <tbody id="families-tbody"></tbody>
-    </table>
+    </table></div>
   `;
 
   if (admin) {
@@ -231,7 +268,7 @@ function renderFamiliesPage() {
 
 function renderFamiliesTableBody() {
   const admin = isAdmin();
-  const list = searchFamilies(data, familySearchQuery);
+  const list = searchFamilies(familySearchQuery);
   const tbody = el('families-tbody');
   if (list.length === 0) {
     tbody.innerHTML = `<tr><td colspan="5" class="empty-note">No families found.</td></tr>`;
@@ -261,38 +298,44 @@ function renderFamiliesTableBody() {
     btn.addEventListener('click', () => openAddEditFamilyModal(btn.dataset.id))
   );
   tbody.querySelectorAll('[data-action="delete"]').forEach((btn) =>
-    btn.addEventListener('click', () => {
-      const family = getFamily(data, btn.dataset.id);
-      const count = familyPaymentCount(data, btn.dataset.id);
-      const msg = count > 0
-        ? `Delete ${family.headName}? This will also delete ${count} payment record(s). This cannot be undone.`
-        : `Delete ${family.headName}? This cannot be undone.`;
-      if (confirm(msg)) {
-        deleteFamily(data, btn.dataset.id);
-        renderFamiliesTableBody();
-      }
-    })
+    btn.addEventListener('click', () => confirmDeleteFamily(btn.dataset.id, () => renderFamiliesTableBody()))
   );
+}
+
+async function confirmDeleteFamily(familyId, afterDelete) {
+  const family = getFamily(familyId);
+  if (!family) return;
+  const count = familyPaymentCount(familyId);
+  const msg = count > 0
+    ? `Delete ${family.headName}? This will also delete ${count} payment record(s) on ALL devices. This cannot be undone.`
+    : `Delete ${family.headName}? This cannot be undone.`;
+  if (!confirm(msg)) return;
+  try {
+    await deleteFamily(familyId);
+    afterDelete();
+  } catch (err) {
+    alert('Delete failed: ' + err.message);
+  }
 }
 
 // ---------- Family detail ----------
 
 function renderFamilyDetail(familyId) {
-  const family = getFamily(data, familyId);
+  const family = getFamily(familyId);
   if (!family) {
     navigateTo('families');
     return;
   }
   const admin = isAdmin();
-  const paidMonths = getPaidMonthsForYear(data, familyId, familyDetailYear);
-  const history = getPaymentsForFamily(data, familyId);
+  const paidMonths = getPaidMonthsForYear(familyId, familyDetailYear);
+  const history = getPaymentsForFamily(familyId);
 
   el('page-family-detail').innerHTML = `
-    <button class="btn-link" id="btn-back-to-families">&larr; Back to Families</button>
+    <button class="btn-link back-link" id="btn-back-to-families">&larr; Back to Families</button>
     <div class="page-header">
       <h2>${escapeHtml(family.headName)}</h2>
       ${admin ? `
-        <div>
+        <div class="btn-row">
           <button class="btn-secondary" id="btn-edit-family">Edit</button>
           <button class="btn-danger" id="btn-delete-family">Delete</button>
         </div>` : ''}
@@ -328,7 +371,7 @@ function renderFamilyDetail(familyId) {
     ${
       history.length === 0
         ? '<p class="empty-note">No payments recorded yet.</p>'
-        : `<table class="data-table">
+        : `<div class="table-wrap"><table class="data-table">
             <thead><tr><th>Date</th><th>Months</th><th>Amount</th><th>Receipt No.</th><th></th></tr></thead>
             <tbody>
               ${history
@@ -344,7 +387,7 @@ function renderFamilyDetail(familyId) {
                 )
                 .join('')}
             </tbody>
-          </table>`
+          </table></div>`
     }
   `;
 
@@ -354,21 +397,14 @@ function renderFamilyDetail(familyId) {
     renderFamilyDetail(familyId);
   });
   el('page-family-detail').querySelectorAll('[data-action="view-receipt"]').forEach((btn) =>
-    btn.addEventListener('click', () => openReceiptModal(btn.dataset.id))
+    btn.addEventListener('click', () => openReceiptModal(getPayment(btn.dataset.id)))
   );
 
   if (admin) {
     el('btn-edit-family').addEventListener('click', () => openAddEditFamilyModal(familyId));
-    el('btn-delete-family').addEventListener('click', () => {
-      const count = familyPaymentCount(data, familyId);
-      const msg = count > 0
-        ? `Delete ${family.headName}? This will also delete ${count} payment record(s). This cannot be undone.`
-        : `Delete ${family.headName}? This cannot be undone.`;
-      if (confirm(msg)) {
-        deleteFamily(data, familyId);
-        navigateTo('families');
-      }
-    });
+    el('btn-delete-family').addEventListener('click', () =>
+      confirmDeleteFamily(familyId, () => navigateTo('families'))
+    );
     el('btn-record-payment').addEventListener('click', () => openRecordPaymentModal(familyId, familyDetailYear));
   }
 }
@@ -394,11 +430,12 @@ function renderSettingsPage() {
     </div>
 
     <div class="settings-section">
-      <h3>Change Admin Password</h3>
+      <h3>Admin Account</h3>
+      <p class="muted">Logged in as <strong>${escapeHtml(adminEmail())}</strong></p>
       <form id="form-password">
         <label>Current Password <input type="password" id="pw-current" required /></label>
-        <label>New Password <input type="password" id="pw-new" required minlength="4" /></label>
-        <label>Confirm New Password <input type="password" id="pw-confirm" required minlength="4" /></label>
+        <label>New Password <input type="password" id="pw-new" required minlength="6" /></label>
+        <label>Confirm New Password <input type="password" id="pw-confirm" required minlength="6" /></label>
         <button type="submit" class="btn-primary">Change Password</button>
         <span class="save-feedback" id="password-save-feedback"></span>
       </form>
@@ -406,11 +443,14 @@ function renderSettingsPage() {
 
     <div class="settings-section">
       <h3>Backup &amp; Restore</h3>
-      <p class="muted">Data is stored only in this browser. Export a backup regularly, especially before clearing browser data or switching devices.</p>
-      <button class="btn-secondary" id="btn-export">Export Backup (JSON)</button>
-      <label class="file-input-label">Import Backup
-        <input type="file" id="btn-import" accept="application/json" />
-      </label>
+      <p class="muted">Data is synced to the cloud automatically. Backups are an extra safety net.</p>
+      <div class="btn-row">
+        <button class="btn-secondary" id="btn-export">Export Backup (JSON)</button>
+        <label class="file-input-label btn-secondary">Import Backup
+          <input type="file" id="btn-import" accept="application/json" />
+        </label>
+        ${hasLegacyLocalData() ? `<button class="btn-secondary" id="btn-migrate">Move old data from this browser to cloud</button>` : ''}
+      </div>
     </div>
 
     <div class="settings-section danger-zone">
@@ -419,50 +459,54 @@ function renderSettingsPage() {
     </div>
   `;
 
-  el('form-committee').addEventListener('submit', (e) => {
+  el('form-committee').addEventListener('submit', async (e) => {
     e.preventDefault();
-    data.settings.committeeName = el('set-committee-name').value.trim() || data.settings.committeeName;
-    data.settings.ratePerMember = Number(el('set-rate').value) || data.settings.ratePerMember;
-    saveData(data);
-    el('app-committee-name').textContent = data.settings.committeeName;
-    el('committee-save-feedback').textContent = 'Saved!';
-    setTimeout(() => (el('committee-save-feedback').textContent = ''), 2000);
+    const feedback = el('committee-save-feedback');
+    try {
+      await saveSettings({
+        committeeName: el('set-committee-name').value.trim() || data.settings.committeeName,
+        ratePerMember: Number(el('set-rate').value) || data.settings.ratePerMember
+      });
+      feedback.textContent = 'Saved!';
+      feedback.className = 'save-feedback';
+    } catch (err) {
+      feedback.textContent = 'Save failed: ' + err.message;
+      feedback.className = 'save-feedback error';
+    }
+    setTimeout(() => (feedback.textContent = ''), 3000);
   });
 
   el('form-password').addEventListener('submit', async (e) => {
     e.preventDefault();
     const feedback = el('password-save-feedback');
-    const current = el('pw-current').value;
     const next = el('pw-new').value;
-    const confirmPw = el('pw-confirm').value;
-    if (next !== confirmPw) {
+    if (next !== el('pw-confirm').value) {
       feedback.textContent = 'New passwords do not match.';
       feedback.className = 'save-feedback error';
       return;
     }
-    const ok = await verifyAdminPassword(data, current);
-    if (!ok) {
-      feedback.textContent = 'Current password is incorrect.';
+    try {
+      await changeAdminPassword(el('pw-current').value, next);
+      feedback.textContent = 'Password changed.';
+      feedback.className = 'save-feedback';
+      el('form-password').reset();
+    } catch (err) {
+      feedback.textContent = friendlyAuthError(err);
       feedback.className = 'save-feedback error';
-      return;
     }
-    await changeAdminPassword(data, next);
-    feedback.textContent = 'Password changed.';
-    feedback.className = 'save-feedback';
-    el('form-password').reset();
   });
 
-  el('btn-export').addEventListener('click', () => exportDataFile(data));
+  el('btn-export').addEventListener('click', () => exportDataFile());
 
   el('btn-import').addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (!confirm('Importing will replace all current data in this browser. Continue?')) {
+    if (!confirm('Importing will REPLACE all current data on ALL devices. Continue?')) {
       e.target.value = '';
       return;
     }
     try {
-      data = await importDataFile(file);
+      await importDataFile(file);
       alert('Backup imported successfully.');
       renderApp();
     } catch (err) {
@@ -471,12 +515,29 @@ function renderSettingsPage() {
     e.target.value = '';
   });
 
-  el('btn-reset-all').addEventListener('click', () => {
-    const typed = prompt('This will permanently erase all families, payments and settings from this browser.\nType DELETE to confirm.');
-    if (typed === 'DELETE') {
-      localStorage.removeItem(STORAGE_KEY);
-      clearRole();
-      location.reload();
+  const migrateBtn = el('btn-migrate');
+  if (migrateBtn) {
+    migrateBtn.addEventListener('click', async () => {
+      if (!confirm('This copies the old data saved in this browser to the cloud, REPLACING whatever is in the cloud now. Continue?')) return;
+      try {
+        await migrateLegacyLocalData();
+        alert('Old data moved to the cloud. It will now appear on all devices.');
+        renderSettingsPage();
+      } catch (err) {
+        alert('Migration failed: ' + err.message);
+      }
+    });
+  }
+
+  el('btn-reset-all').addEventListener('click', async () => {
+    const typed = prompt('This will permanently erase all families, payments and settings on ALL devices.\nType DELETE to confirm.');
+    if (typed !== 'DELETE') return;
+    try {
+      await eraseAllCloudData();
+      alert('All data erased.');
+      renderApp();
+    } catch (err) {
+      alert('Erase failed: ' + err.message);
     }
   });
 }
@@ -497,7 +558,7 @@ function closeModal() {
 
 function openAddEditFamilyModal(familyId = null) {
   const editing = Boolean(familyId);
-  const family = editing ? getFamily(data, familyId) : null;
+  const family = editing ? getFamily(familyId) : null;
 
   openModal(`
     <h3>${editing ? 'Edit Family' : 'Add Family'}</h3>
@@ -526,7 +587,7 @@ function openAddEditFamilyModal(familyId = null) {
   `);
 
   el('ff-cancel').addEventListener('click', closeModal);
-  el('form-family').addEventListener('submit', (e) => {
+  el('form-family').addEventListener('submit', async (e) => {
     e.preventDefault();
     const fields = {
       headName: el('ff-head-name').value,
@@ -548,27 +609,29 @@ function openAddEditFamilyModal(familyId = null) {
       return;
     }
 
-    if (editing) {
-      updateFamily(data, familyId, fields);
-    } else {
-      addFamily(data, fields);
+    try {
+      if (editing) {
+        await updateFamily(familyId, fields);
+      } else {
+        await addFamily(fields);
+      }
+      closeModal();
+      refreshCurrentPage();
+    } catch (err) {
+      el('ff-error').textContent = 'Save failed: ' + err.message;
     }
-    closeModal();
-    if (currentPage === 'families') renderFamiliesTableBody();
-    if (currentPage === 'family-detail') renderFamilyDetail(currentFamilyId);
-    if (currentPage === 'dashboard') renderDashboard();
   });
 }
 
 // ---------- Modal: Record Payment ----------
 
 function openRecordPaymentModal(familyId, prefillYear) {
-  const family = getFamily(data, familyId);
+  const family = getFamily(familyId);
   if (!family) return;
   let year = prefillYear || currentYear();
 
   const renderBody = () => {
-    const paidMonths = getPaidMonthsForYear(data, familyId, year);
+    const paidMonths = getPaidMonthsForYear(familyId, year);
     return `
       <h3>Record Payment - ${escapeHtml(family.headName)}</h3>
       <label>Year <select id="rp-year">${yearOptions(year)}</select></label>
@@ -613,28 +676,37 @@ function openRecordPaymentModal(familyId, prefillYear) {
     updateAmount();
 
     el('rp-cancel').addEventListener('click', closeModal);
-    el('rp-save').addEventListener('click', () => {
+    el('rp-save').addEventListener('click', async () => {
       const checked = [...el('rp-month-grid').querySelectorAll('input[type="checkbox"]:checked:not(:disabled)')];
       const months = checked.map((c) => Number(c.value));
       if (months.length === 0) {
         el('rp-error').textContent = 'Select at least one month.';
         return;
       }
-      const result = recordPayment(data, {
-        familyId,
-        year,
-        months,
-        paidOn: el('rp-date').value || todayISO(),
-        note: el('rp-note').value
-      });
-      if (result.error) {
-        el('rp-error').textContent = result.error;
-        return;
+      const saveBtn = el('rp-save');
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Saving...';
+      try {
+        const result = await recordPayment({
+          familyId,
+          year,
+          months,
+          paidOn: el('rp-date').value || todayISO(),
+          note: el('rp-note').value
+        });
+        if (result.error) {
+          el('rp-error').textContent = result.error;
+          return;
+        }
+        closeModal();
+        refreshCurrentPage();
+        openReceiptModal(result.payment);
+      } catch (err) {
+        el('rp-error').textContent = 'Save failed: ' + err.message;
+      } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Save Payment';
       }
-      closeModal();
-      if (currentPage === 'family-detail') renderFamilyDetail(currentFamilyId);
-      if (currentPage === 'dashboard') renderDashboard();
-      openReceiptModal(result.payment.id);
     });
   };
 
@@ -644,10 +716,10 @@ function openRecordPaymentModal(familyId, prefillYear) {
 
 // ---------- Modal: Receipt ----------
 
-function openReceiptModal(paymentId) {
-  const payment = getPayment(data, paymentId);
+function openReceiptModal(payment) {
   if (!payment) return;
-  const family = getFamily(data, payment.familyId);
+  const family = getFamily(payment.familyId);
+  if (!family) return;
   const message = buildReceiptMessage(payment, family, data.settings);
 
   openModal(`

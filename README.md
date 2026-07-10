@@ -1,18 +1,20 @@
 # Baba Mohalla Committee App
 
-A simple offline web app for managing monthly committee collections.
+A web app for managing monthly committee collections, with live cloud sync so every device shows the exact same data.
 
-## How to use
+Live app: https://shoawfkiat29.github.io/baba-mohalla-committee/
 
-Double-click `index.html` to open it in your browser. No install, no internet needed — all data is saved in that browser (local storage).
+## Roles
 
-- **Admin** login (default password `admin123`, change it under Settings): add/edit/delete families, record payments, send WhatsApp receipts, manage settings.
-- **Viewer**: read-only access to dashboard, families, and payment history — no password needed.
+- **Admin** — logs in with email + password (Firebase Authentication). Can add/edit/delete families, record payments, send WhatsApp receipts, and manage settings. Only emails allowed in the Firestore security rules can write data.
+- **Viewer** — no login needed. Read-only access to the dashboard, families, and payment history.
 
-## Backing up your data
+## How it works
 
-Since data lives only in this browser, use **Settings → Export Backup** regularly (and before clearing browser data or moving to another computer). Use **Import Backup** to restore it.
+- Data (families, payments, settings) lives in **Firebase Firestore** and syncs live to all devices. Works offline too — changes catch up when internet returns.
+- The app itself is static HTML/CSS/JS hosted on GitHub Pages. `js/firebase-config.js` holds the Firebase web config.
+- After recording a payment, the receipt can be sent via WhatsApp (opens the chat with the message pre-filled), copied, or printed.
 
-## WhatsApp receipts
+## Backup
 
-After recording a payment, click **Send via WhatsApp** on the receipt — it opens WhatsApp (app or web) with the message pre-filled in that family's chat. You just hit send.
+Settings → Export Backup downloads all data as JSON. Import Backup replaces the cloud data with a backup file's contents (admin only).
