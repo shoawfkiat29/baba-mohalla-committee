@@ -172,6 +172,15 @@ function totalCollectedForYear(year) {
   return data.payments.filter((p) => p.year === year).reduce((sum, p) => sum + cashCollectedOf(p), 0);
 }
 
+// Value of dues settled for one specific month (not the cash timeline - a
+// single payment can cover several months, so this counts each month's
+// share of it, regardless of when or via advance the money came in).
+function totalDuesForMonth(year, month) {
+  return data.payments
+    .filter((p) => p.type !== 'advance' && p.year === year && p.months.includes(month))
+    .reduce((sum, p) => sum + p.ratePerMember * p.membersAtPayment, 0);
+}
+
 function getPendingFamiliesForMonth(year, month) {
   return data.families.filter((f) => {
     const paid = getPaidMonthsForYear(f.id, year);

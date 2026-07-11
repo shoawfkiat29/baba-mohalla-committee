@@ -231,8 +231,8 @@ function renderDashboard() {
         <div class="stat-value">${data.families.length}</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">Collected in ${dashboardYear}</div>
-        <div class="stat-value">${formatCurrency(totalCollectedForYear(dashboardYear))}</div>
+        <div class="stat-label">Collected in ${MONTH_NAMES[dashboardMonth - 1]} ${dashboardYear}</div>
+        <div class="stat-value">${formatCurrency(totalDuesForMonth(dashboardYear, dashboardMonth))}</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">Collected All-Time</div>
@@ -432,11 +432,7 @@ function renderFamilyDetail(familyId) {
       &nbsp;|&nbsp; All-time: <strong>${formatCurrency(history.reduce((s, p) => s + cashCollectedOf(p), 0))}</strong>
       &nbsp;|&nbsp; Outstanding months this year: <strong>${12 - paidMonths.size}</strong>
     </p>
-    ${admin ? `
-      <div class="btn-row">
-        <button class="btn-primary" id="btn-record-payment">Record Payment</button>
-        <button class="btn-secondary" id="btn-add-advance">Add Advance</button>
-      </div>` : ''}
+    ${admin ? `<button class="btn-primary" id="btn-record-payment">Record Payment</button>` : ''}
 
     <h3>Transaction History</h3>
     ${
@@ -486,7 +482,6 @@ function renderFamilyDetail(familyId) {
       confirmDeleteFamily(familyId, () => navigateTo('families'))
     );
     el('btn-record-payment').addEventListener('click', () => openRecordPaymentModal(familyId, familyDetailYear));
-    el('btn-add-advance').addEventListener('click', () => openAddAdvanceModal(familyId));
   }
 }
 
@@ -719,7 +714,7 @@ function openAddEditFamilyModal(familyId = null) {
   });
 }
 
-// ---------- Modal: Record Payment ----------
+// ---------- Modal: Record Payment (also handles pure advance deposits) ----------
 
 function openRecordPaymentModal(familyId, prefillYear) {
   const family = getFamily(familyId);
@@ -728,11 +723,10 @@ function openRecordPaymentModal(familyId, prefillYear) {
 
   const renderBody = () => {
     const paidMonths = getPaidMonthsForYear(familyId, year);
-    const advanceBalance = family.advanceBalance || 0;
     return `
       <h3>Record Payment - ${escapeHtml(family.headName)}</h3>
       <label>Year <select id="rp-year">${yearOptions(year)}</select></label>
-      <p class="muted">Select the months being paid for. Already-paid months are locked.</p>
+      <p class="muted">Select the months being paid for. Already-paid months are locked. Leave all months unchecked to record a standalone advance deposit instead.</p>
       <div class="month-checkbox-grid" id="rp-month-grid">
         ${MONTH_SHORT.map((m, i) => {
           const monthNum = i + 1;
@@ -744,14 +738,11 @@ function openRecordPaymentModal(familyId, prefillYear) {
             </label>`;
         }).join('')}
       </div>
-      <div class="amount-display" id="rp-amount-box">
-        <div>Dues Amount: <strong id="rp-dues">₹0</strong></div>
-        ${advanceBalance > 0 ? `<div>Advance Applied: <strong id="rp-advance-applied">₹0</strong> <span class="muted">(balance: ${formatCurrency(advanceBalance)})</span></div>` : ''}
-        <div>Amount to Collect Now: <strong id="rp-collect-now">₹0</strong></div>
-      </div>
-      <label>Extra Amount Received (optional, banked as advance for future months)
+      <div class="amount-display" id="rp-amount-box"></div>
+      <label id="rp-extra-label">Extra Amount
         <input type="number" id="rp-extra" min="0" value="0" />
       </label>
+      <p class="muted" id="rp-extra-hint"></p>
       <label>Payment Date <input type="date" id="rp-date" value="${todayISO()}" /></label>
       <label>Note (optional) <input type="text" id="rp-note" /></label>
       <p class="form-error" id="rp-error"></p>
@@ -773,12 +764,27 @@ function openRecordPaymentModal(familyId, prefillYear) {
     const advanceBalance = family.advanceBalance || 0;
     const updateAmount = () => {
       const checked = el('rp-month-grid').querySelectorAll('input[type="checkbox"]:checked:not(:disabled)');
-      const dues = calculateAmount(family.members, data.settings.ratePerMember, checked.length);
-      const advanceApplied = Math.min(advanceBalance, dues);
       const extra = Math.max(0, Number(el('rp-extra').value) || 0);
-      el('rp-dues').textContent = formatCurrency(dues);
-      if (el('rp-advance-applied')) el('rp-advance-applied').textContent = formatCurrency(advanceApplied);
-      el('rp-collect-now').textContent = formatCurrency(dues - advanceApplied + extra);
+      const box = el('rp-amount-box');
+      const saveBtn = el('rp-save');
+
+      if (checked.length === 0) {
+        box.innerHTML = `<div>Advance to Deposit: <strong>${formatCurrency(extra)}</strong></div>`;
+        el('rp-extra-label').firstChild.textContent = 'Advance Amount ';
+        el('rp-extra-hint').textContent = 'No months selected - this will be recorded as a standalone advance deposit, auto-applied to future dues.';
+        saveBtn.textContent = 'Save Advance';
+      } else {
+        const dues = calculateAmount(family.members, data.settings.ratePerMember, checked.length);
+        const advanceApplied = Math.min(advanceBalance, dues);
+        box.innerHTML = `
+          <div>Dues Amount: <strong>${formatCurrency(dues)}</strong></div>
+          ${advanceBalance > 0 ? `<div>Advance Applied: <strong>${formatCurrency(advanceApplied)}</strong> <span class="muted">(balance: ${formatCurrency(advanceBalance)})</span></div>` : ''}
+          <div>Amount to Collect Now: <strong>${formatCurrency(dues - advanceApplied + extra)}</strong></div>
+        `;
+        el('rp-extra-label').firstChild.textContent = 'Extra Amount ';
+        el('rp-extra-hint').textContent = 'Optional: anything paid beyond dues is banked as advance for future months.';
+        saveBtn.textContent = 'Save Payment';
+      }
     };
     el('rp-month-grid').querySelectorAll('input[type="checkbox"]').forEach((cb) => {
       cb.addEventListener('change', updateAmount);
@@ -790,92 +796,39 @@ function openRecordPaymentModal(familyId, prefillYear) {
     el('rp-save').addEventListener('click', async () => {
       const checked = [...el('rp-month-grid').querySelectorAll('input[type="checkbox"]:checked:not(:disabled)')];
       const months = checked.map((c) => Number(c.value));
-      if (months.length === 0) {
-        el('rp-error').textContent = 'Select at least one month.';
+      const extra = Math.max(0, Number(el('rp-extra').value) || 0);
+      const paidOn = el('rp-date').value || todayISO();
+      const note = el('rp-note').value;
+
+      if (months.length === 0 && extra <= 0) {
+        el('rp-error').textContent = 'Select at least one month, or enter an amount to record as advance.';
         return;
       }
       const saveBtn = el('rp-save');
       saveBtn.disabled = true;
-      saveBtn.textContent = 'Saving...';
+      const savingLabel = months.length === 0 ? 'Saving advance...' : 'Saving...';
+      saveBtn.textContent = savingLabel;
       try {
-        const result = await recordPayment({
-          familyId,
-          year,
-          months,
-          paidOn: el('rp-date').value || todayISO(),
-          note: el('rp-note').value,
-          extraAdvance: el('rp-extra').value
-        });
+        const result = months.length === 0
+          ? await recordAdvance({ familyId, amount: extra, paidOn, note })
+          : await recordPayment({ familyId, year, months, paidOn, note, extraAdvance: extra });
         if (result.error) {
           el('rp-error').textContent = result.error;
           return;
         }
         closeModal();
         refreshCurrentPage();
-        openReceiptModal(result.payment);
+        openReceiptModal(result.payment || result.advance);
       } catch (err) {
         el('rp-error').textContent = 'Save failed: ' + err.message;
       } finally {
         saveBtn.disabled = false;
-        saveBtn.textContent = 'Save Payment';
       }
     });
   };
 
   openModal(renderBody());
   wireBody();
-}
-
-// ---------- Modal: Add Advance ----------
-
-function openAddAdvanceModal(familyId) {
-  const family = getFamily(familyId);
-  if (!family) return;
-
-  openModal(`
-    <h3>Add Advance - ${escapeHtml(family.headName)}</h3>
-    <p class="muted">Record extra money kept with the committee that isn't tied to specific months yet. It will be automatically applied to dues next time a payment is recorded.</p>
-    <label>Amount Received <input type="number" id="adv-amount" min="1" required /></label>
-    <label>Date <input type="date" id="adv-date" value="${todayISO()}" /></label>
-    <label>Note (optional) <input type="text" id="adv-note" /></label>
-    <p class="form-error" id="adv-error"></p>
-    <div class="modal-actions">
-      <button type="button" class="btn-secondary" id="adv-cancel">Cancel</button>
-      <button type="button" class="btn-primary" id="adv-save">Save Advance</button>
-    </div>
-  `);
-
-  el('adv-cancel').addEventListener('click', closeModal);
-  el('adv-save').addEventListener('click', async () => {
-    const amount = Number(el('adv-amount').value);
-    if (!amount || amount <= 0) {
-      el('adv-error').textContent = 'Enter an amount greater than zero.';
-      return;
-    }
-    const saveBtn = el('adv-save');
-    saveBtn.disabled = true;
-    saveBtn.textContent = 'Saving...';
-    try {
-      const result = await recordAdvance({
-        familyId,
-        amount,
-        paidOn: el('adv-date').value || todayISO(),
-        note: el('adv-note').value
-      });
-      if (result.error) {
-        el('adv-error').textContent = result.error;
-        return;
-      }
-      closeModal();
-      refreshCurrentPage();
-      openReceiptModal(result.advance);
-    } catch (err) {
-      el('adv-error').textContent = 'Save failed: ' + err.message;
-    } finally {
-      saveBtn.disabled = false;
-      saveBtn.textContent = 'Save Advance';
-    }
-  });
 }
 
 // ---------- Modal: Receipt ----------
