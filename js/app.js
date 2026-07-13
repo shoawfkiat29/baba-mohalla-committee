@@ -284,7 +284,7 @@ function renderDashboard() {
       pending.length === 0
         ? '<p class="empty-note">Everyone has paid for this month. 🎉</p>'
         : `<div class="table-wrap"><table class="data-table">
-            <thead><tr><th>Head Name</th><th>Phone</th><th>Mem.</th><th>Amount Due</th><th></th></tr></thead>
+            <thead><tr><th>Head Name</th><th>Phone</th><th>Mem.</th><th>Amount Due</th><th class="col-action"></th></tr></thead>
             <tbody>
               ${pending
                 .map(
@@ -294,7 +294,7 @@ function renderDashboard() {
                   <td>${escapeHtml(f.phone)}</td>
                   <td>${f.members}</td>
                   <td>${formatCurrency(f.members * data.settings.ratePerMember)}</td>
-                  <td>
+                  <td class="col-action">
                     ${admin ? `<button class="kebab-btn" data-action="row-menu" data-id="${f.id}" aria-label="Actions">&#8942;</button>` : ''}
                   </td>
                 </tr>`
@@ -347,7 +347,7 @@ function renderFamiliesPage() {
     </div>
     <input type="text" id="family-search" placeholder="Search by name or phone..." value="${escapeHtml(familySearchQuery)}" />
     <div class="table-wrap"><table class="data-table">
-      <thead><tr><th>Head Name</th><th>Phone</th><th>Mem.</th><th>Amount / Month</th><th></th></tr></thead>
+      <thead><tr><th>Head Name</th><th>Phone</th><th>Mem.</th><th>Amount / Month</th><th class="col-action"></th></tr></thead>
       <tbody id="families-tbody"></tbody>
     </table></div>
   `;
@@ -378,7 +378,7 @@ function renderFamiliesTableBody() {
       <td>${escapeHtml(f.phone)}</td>
       <td>${f.members}</td>
       <td>${formatCurrency(f.members * data.settings.ratePerMember)}</td>
-      <td>
+      <td class="col-action">
         ${admin ? `<button class="kebab-btn" data-action="row-menu" data-id="${f.id}" aria-label="Actions">&#8942;</button>` : ''}
       </td>
     </tr>`
@@ -474,7 +474,7 @@ function renderFamilyDetail(familyId) {
       history.length === 0
         ? '<p class="empty-note">No transactions recorded yet.</p>'
         : `<div class="table-wrap"><table class="data-table transactions-table">
-            <thead><tr><th>Date</th><th>For</th><th>Amount</th><th>Receipt No.</th><th></th></tr></thead>
+            <thead><tr><th>Date</th><th>For</th><th>Amount</th><th>Receipt No.</th><th class="col-action"></th></tr></thead>
             <tbody>
               ${history
                 .map(
@@ -484,7 +484,7 @@ function renderFamilyDetail(familyId) {
                   <td>${p.type === 'advance' ? '<span class="type-badge">Advance</span>' : escapeHtml(monthsListLabel(p.year, p.months))}</td>
                   <td>${formatCurrency(p.amount)}</td>
                   <td>${p.receiptNo}</td>
-                  <td><button class="kebab-btn" data-action="txn-menu" data-id="${p.id}" aria-label="Actions">&#8942;</button></td>
+                  <td class="col-action"><button class="kebab-btn" data-action="txn-menu" data-id="${p.id}" aria-label="Actions">&#8942;</button></td>
                 </tr>`
                 )
                 .join('')}
@@ -552,7 +552,7 @@ function renderExpensesPage() {
     </div>
     <input type="text" id="expense-search" placeholder="Search by description or category..." value="${escapeHtml(expenseSearchQuery)}" />
     <div class="table-wrap"><table class="data-table expenses-table">
-      <thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Amount</th><th></th></tr></thead>
+      <thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Amount</th><th class="col-action"></th></tr></thead>
       <tbody id="expenses-tbody"></tbody>
     </table></div>
   `;
@@ -583,7 +583,7 @@ function renderExpensesTableBody() {
       <td>${escapeHtml(e.description)}</td>
       <td>${escapeHtml(e.category) || '-'}</td>
       <td>${formatCurrency(e.amount)}</td>
-      <td>
+      <td class="col-action">
         ${admin ? `<button class="kebab-btn" data-action="row-menu" data-id="${e.id}" aria-label="Actions">&#8942;</button>` : ''}
       </td>
     </tr>`

@@ -630,11 +630,16 @@ label input, label select, label textarea { margin-top: 5px; }
   .data-table th:nth-child(2), .data-table td:nth-child(2) { flex: 1.15 1 0; }
   .data-table th:nth-child(3), .data-table td:nth-child(3) { flex: 0.55 1 0; text-align: center; }
   .data-table th:nth-child(4), .data-table td:nth-child(4) { flex: 0.85 1 0; text-align: right; }
-  .data-table th:last-child, .data-table td:last-child {
-    flex: 0 0 auto;
-    width: auto;
+  /* Fixed, content-independent width so the header's empty action cell and
+     the data row's kebab-button cell always reserve identical space - if
+     this were sized to content (e.g. flex: 0 0 auto), the empty header cell
+     would shrink smaller than the data cell, and the real data columns
+     would end up narrower than their headers, throwing off alignment. */
+  .data-table th.col-action, .data-table td.col-action {
+    flex: 0 0 32px;
+    width: 32px;
     overflow: visible;
-    text-align: right;
+    text-align: center;
   }
 
   /* Expenses table has different column meanings (date/description/category/
