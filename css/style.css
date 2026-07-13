@@ -574,14 +574,23 @@ label input, label select, label textarea { margin-top: 5px; }
     right: 0;
     background: #fff;
     box-shadow: 0 -4px 20px rgba(15, 40, 30, 0.12);
-    padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
-    justify-content: flex-start;
+    padding: 8px 6px calc(8px + env(safe-area-inset-bottom));
+    justify-content: stretch;
     flex-wrap: nowrap;
-    overflow-x: auto;
-    gap: 4px;
+    gap: 2px;
     z-index: 20;
   }
-  .nav-tab { color: var(--muted); padding: 9px 12px; font-size: 0.85rem; flex-shrink: 0; }
+  .nav-tab {
+    color: var(--muted);
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 9px 4px;
+    font-size: 0.72rem;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
   .nav-tab:hover { color: var(--primary-dark); background: transparent; }
   .nav-tab.active { color: #fff; background: var(--primary); }
   .nav-tab.logout { color: var(--danger); }
