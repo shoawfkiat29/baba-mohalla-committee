@@ -262,7 +262,7 @@ function renderDashboard() {
       paid.length === 0
         ? '<p class="empty-note">No one has paid for this month yet.</p>'
         : `<div class="table-wrap"><table class="data-table">
-            <thead><tr><th>Head Name</th><th>Phone</th><th>Members</th><th>Amount</th></tr></thead>
+            <thead><tr><th>Head Name</th><th>Phone</th><th>Mem.</th><th>Amount</th></tr></thead>
             <tbody>
               ${paid
                 .map(
@@ -284,7 +284,7 @@ function renderDashboard() {
       pending.length === 0
         ? '<p class="empty-note">Everyone has paid for this month. 🎉</p>'
         : `<div class="table-wrap"><table class="data-table">
-            <thead><tr><th>Head Name</th><th>Phone</th><th>Members</th><th>Amount Due</th><th></th></tr></thead>
+            <thead><tr><th>Head Name</th><th>Phone</th><th>Mem.</th><th>Amount Due</th><th></th></tr></thead>
             <tbody>
               ${pending
                 .map(
@@ -347,7 +347,7 @@ function renderFamiliesPage() {
     </div>
     <input type="text" id="family-search" placeholder="Search by name or phone..." value="${escapeHtml(familySearchQuery)}" />
     <div class="table-wrap"><table class="data-table">
-      <thead><tr><th>Head Name</th><th>Phone</th><th>Members</th><th>Amount / Month</th><th></th></tr></thead>
+      <thead><tr><th>Head Name</th><th>Phone</th><th>Mem.</th><th>Amount / Month</th><th></th></tr></thead>
       <tbody id="families-tbody"></tbody>
     </table></div>
   `;
@@ -473,7 +473,7 @@ function renderFamilyDetail(familyId) {
     ${
       history.length === 0
         ? '<p class="empty-note">No transactions recorded yet.</p>'
-        : `<div class="table-wrap"><table class="data-table">
+        : `<div class="table-wrap"><table class="data-table transactions-table">
             <thead><tr><th>Date</th><th>For</th><th>Amount</th><th>Receipt No.</th><th></th></tr></thead>
             <tbody>
               ${history

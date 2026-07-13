@@ -199,7 +199,7 @@ label input, label select, label textarea { margin-top: 5px; }
 .app-header {
   background: linear-gradient(120deg, #064e3b 0%, var(--primary-deep) 55%, var(--primary-dark) 100%);
   color: #fff;
-  padding: 16px 24px;
+  padding: clamp(12px, 3vw, 16px) clamp(14px, 4vw, 24px);
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
@@ -212,7 +212,7 @@ label input, label select, label textarea { margin-top: 5px; }
 }
 
 .app-title {
-  font-size: 1.15rem;
+  font-size: clamp(0.95rem, 3.2vw, 1.15rem);
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -283,7 +283,7 @@ label input, label select, label textarea { margin-top: 5px; }
 .stat-card {
   background: var(--card-bg);
   border-radius: var(--radius);
-  padding: 20px 22px;
+  padding: clamp(14px, 4vw, 20px) clamp(14px, 4.5vw, 22px);
   box-shadow: var(--shadow-sm);
   border: 1px solid rgba(226, 232, 230, 0.6);
   position: relative;
@@ -306,7 +306,7 @@ label input, label select, label textarea { margin-top: 5px; }
   letter-spacing: 0.05em;
   margin-bottom: 8px;
 }
-.stat-value { font-size: 1.65rem; font-weight: 800; color: var(--primary-deep); letter-spacing: -0.03em; }
+.stat-value { font-size: clamp(1.2rem, 4vw, 1.65rem); font-weight: 800; color: var(--primary-deep); letter-spacing: -0.03em; }
 .stat-card.warn .stat-value { color: #b45309; }
 
 .info-card {
@@ -409,7 +409,7 @@ label input, label select, label textarea { margin-top: 5px; }
 
 .month-status-grid {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(52px, 1fr));
   gap: 10px;
   margin-bottom: 16px;
 }
@@ -507,7 +507,7 @@ label input, label select, label textarea { margin-top: 5px; }
 
 .month-checkbox-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(74px, 1fr));
   gap: 8px;
   margin: 14px 0;
 }
@@ -563,9 +563,6 @@ label input, label select, label textarea { margin-top: 5px; }
 /* ---------- Responsive / mobile ---------- */
 
 @media (max-width: 640px) {
-  .app-header { padding: 14px 16px; }
-  .app-title { font-size: 1rem; }
-
   /* Bottom navigation bar on phones */
   .app-nav {
     position: fixed;
@@ -584,8 +581,8 @@ label input, label select, label textarea { margin-top: 5px; }
     color: var(--muted);
     flex: 1 1 0;
     min-width: 0;
-    padding: 9px 4px;
-    font-size: 0.72rem;
+    padding: clamp(7px, 2.4vw, 9px) clamp(2px, 1.2vw, 4px);
+    font-size: clamp(0.64rem, 2.9vw, 0.78rem);
     text-align: center;
     white-space: nowrap;
     overflow: hidden;
@@ -596,12 +593,9 @@ label input, label select, label textarea { margin-top: 5px; }
   .nav-tab.logout { color: var(--danger); }
   .nav-tab.logout:hover { color: var(--danger); background: var(--danger-soft); }
 
-  .app-main { padding: 20px 16px 110px; }
-  .stat-cards { grid-template-columns: 1fr 1fr; gap: 12px; }
-  .stat-value { font-size: 1.35rem; }
-  .month-status-grid { grid-template-columns: repeat(4, 1fr); gap: 8px; }
-  .month-checkbox-grid { grid-template-columns: repeat(3, 1fr); }
-  .modal-content { padding: 22px 18px; }
+  .app-main { padding: clamp(14px, 4.5vw, 20px) clamp(12px, 4vw, 16px) 110px; }
+  .stat-cards { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+  .modal-content { padding: clamp(18px, 5.5vw, 22px) clamp(14px, 5vw, 18px); }
 
   /* Rows stay horizontal (one line per record) at a smaller font instead of
      scrolling sideways or stacking into tall cards. Actions collapse into a
@@ -609,8 +603,8 @@ label input, label select, label textarea { margin-top: 5px; }
   .table-wrap { overflow-x: visible; background: none; box-shadow: none; border: none; }
   .data-table, .data-table thead, .data-table tbody { display: block; width: 100%; }
   .data-table tr { display: flex; align-items: center; width: 100%; gap: 6px; }
-  .data-table thead tr { padding: 0 12px 6px; }
-  .data-table thead th { background: none; padding: 0; border-bottom: none; }
+  .data-table thead tr { padding: 0 12px 6px; align-items: flex-start; }
+  .data-table thead th { background: none; padding: 0; border-bottom: none; white-space: normal; overflow-wrap: anywhere; line-height: 1.25; }
 
   .data-table tbody tr {
     background: var(--card-bg);
@@ -629,9 +623,9 @@ label input, label select, label textarea { margin-top: 5px; }
     text-overflow: ellipsis;
     white-space: nowrap;
     padding: 0;
-    font-size: 0.72rem;
+    font-size: clamp(0.66rem, 2.7vw, 0.72rem);
   }
-  .data-table td { font-size: 0.78rem; }
+  .data-table td { font-size: clamp(0.72rem, 2.9vw, 0.78rem); }
   .data-table th:nth-child(1), .data-table td:nth-child(1) { flex: 1.6 1 0; }
   .data-table th:nth-child(2), .data-table td:nth-child(2) { flex: 1.15 1 0; }
   .data-table th:nth-child(3), .data-table td:nth-child(3) { flex: 0.55 1 0; text-align: center; }
@@ -651,6 +645,13 @@ label input, label select, label textarea { margin-top: 5px; }
   .expenses-table th:nth-child(3), .expenses-table td:nth-child(3) { flex: 1 1 0; text-align: left; }
   .expenses-table th:nth-child(4), .expenses-table td:nth-child(4) { flex: 0.9 1 0; text-align: right; }
 
+  /* Transaction history table: date/for/amount/receipt-no, also different
+     from the families-shaped tables' column meanings. */
+  .transactions-table th:nth-child(1), .transactions-table td:nth-child(1) { flex: 1 1 0; text-align: left; }
+  .transactions-table th:nth-child(2), .transactions-table td:nth-child(2) { flex: 1.3 1 0; text-align: left; }
+  .transactions-table th:nth-child(3), .transactions-table td:nth-child(3) { flex: 0.9 1 0; text-align: right; }
+  .transactions-table th:nth-child(4), .transactions-table td:nth-child(4) { flex: 1.1 1 0; text-align: right; }
+
   .kebab-btn { padding: 2px 6px; font-size: 1.05rem; }
-  .login-card { padding: 32px 24px; }
+  .login-card { padding: clamp(26px, 7vw, 32px) clamp(18px, 6vw, 24px); }
 }
