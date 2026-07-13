@@ -262,7 +262,7 @@ function renderDashboard() {
       paid.length === 0
         ? '<p class="empty-note">No one has paid for this month yet.</p>'
         : `<div class="table-wrap"><table class="data-table">
-            <thead><tr><th>Head Name</th><th>Phone</th><th>Mem.</th><th>Amount</th></tr></thead>
+            <thead><tr><th>Head Name</th><th>Phone</th><th>Mem.</th><th>Amount</th><th class="col-action"></th></tr></thead>
             <tbody>
               ${paid
                 .map(
@@ -272,6 +272,7 @@ function renderDashboard() {
                   <td>${escapeHtml(f.phone)}</td>
                   <td>${f.members}</td>
                   <td>${formatCurrency(f.members * data.settings.ratePerMember)}</td>
+                  <td class="col-action"></td>
                 </tr>`
                 )
                 .join('')}
