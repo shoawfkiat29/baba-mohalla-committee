@@ -8,6 +8,7 @@ let dashboardYear = currentYear();
 let dashboardMonth = currentMonth();
 let familyDetailYear = currentYear();
 let familySearchQuery = '';
+let expenseSearchQuery = '';
 
 function el(id) {
   return document.getElementById(id);
@@ -129,6 +130,7 @@ function refreshCurrentPage() {
   if (currentPage === 'dashboard') renderDashboard();
   if (currentPage === 'families') renderFamiliesPage();
   if (currentPage === 'family-detail') renderFamilyDetail(currentFamilyId);
+  if (currentPage === 'expenses') renderExpensesPage();
   // Settings page holds form state the user may be typing in; don't clobber it.
 }
 
@@ -178,6 +180,7 @@ function wireGlobalChrome() {
 
   el('tab-dashboard').addEventListener('click', () => navigateTo('dashboard'));
   el('tab-families').addEventListener('click', () => navigateTo('families'));
+  el('tab-expenses').addEventListener('click', () => navigateTo('expenses'));
   el('tab-settings').addEventListener('click', () => navigateTo('settings'));
 
   el('modal-overlay').addEventListener('click', (e) => {
@@ -187,10 +190,10 @@ function wireGlobalChrome() {
 
 function navigateTo(page, params = {}) {
   currentPage = page;
-  ['dashboard', 'families', 'family-detail', 'settings'].forEach((p) => {
+  ['dashboard', 'families', 'family-detail', 'expenses', 'settings'].forEach((p) => {
     el(`page-${p}`).classList.toggle('hidden', p !== page);
   });
-  ['dashboard', 'families', 'settings'].forEach((p) => {
+  ['dashboard', 'families', 'expenses', 'settings'].forEach((p) => {
     el(`tab-${p}`).classList.toggle('active', p === page || (page === 'family-detail' && p === 'families'));
   });
 
@@ -201,6 +204,7 @@ function navigateTo(page, params = {}) {
     familyDetailYear = params.year || currentYear();
     renderFamilyDetail(currentFamilyId);
   }
+  if (page === 'expenses') renderExpensesPage();
   if (page === 'settings') renderSettingsPage();
 }
 
@@ -242,6 +246,14 @@ function renderDashboard() {
       <div class="stat-card warn">
         <div class="stat-label">Pending - ${MONTH_NAMES[dashboardMonth - 1]} ${dashboardYear}</div>
         <div class="stat-value">${pending.length}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Expenses in ${MONTH_NAMES[dashboardMonth - 1]} ${dashboardYear}</div>
+        <div class="stat-value">${formatCurrency(totalExpensesForMonth(dashboardYear, dashboardMonth))}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Balance in Hand</div>
+        <div class="stat-value">${formatCurrency(totalCollectedAllTime() - totalExpensesAllTime())}</div>
       </div>
     </div>
 
@@ -521,6 +533,149 @@ async function confirmDeleteTransaction(txnId, familyId) {
   } catch (err) {
     alert('Delete failed: ' + err.message);
   }
+}
+
+// ---------- Expenses ----------
+
+function renderExpensesPage() {
+  const admin = isAdmin();
+  el('page-expenses').innerHTML = `
+    <div class="page-header">
+      <h2>Expenses</h2>
+      ${admin ? `<button class="btn-primary" id="btn-add-expense">+ Add Expense</button>` : ''}
+    </div>
+    <div class="stat-cards">
+      <div class="stat-card">
+        <div class="stat-label">Total Expenses (All-Time)</div>
+        <div class="stat-value">${formatCurrency(totalExpensesAllTime())}</div>
+      </div>
+    </div>
+    <input type="text" id="expense-search" placeholder="Search by description or category..." value="${escapeHtml(expenseSearchQuery)}" />
+    <div class="table-wrap"><table class="data-table">
+      <thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Amount</th><th></th></tr></thead>
+      <tbody id="expenses-tbody"></tbody>
+    </table></div>
+  `;
+
+  if (admin) {
+    el('btn-add-expense').addEventListener('click', () => openAddEditExpenseModal());
+  }
+  el('expense-search').addEventListener('input', (e) => {
+    expenseSearchQuery = e.target.value;
+    renderExpensesTableBody();
+  });
+  renderExpensesTableBody();
+}
+
+function renderExpensesTableBody() {
+  const admin = isAdmin();
+  const list = searchExpenses(expenseSearchQuery);
+  const tbody = el('expenses-tbody');
+  if (list.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" class="empty-note">No expenses found.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = list
+    .map(
+      (e) => `
+    <tr>
+      <td>${formatDateForDisplay(e.spentOn)}</td>
+      <td>${escapeHtml(e.description)}</td>
+      <td>${escapeHtml(e.category) || '-'}</td>
+      <td>${formatCurrency(e.amount)}</td>
+      <td>
+        ${admin ? `<button class="kebab-btn" data-action="row-menu" data-id="${e.id}" aria-label="Actions">&#8942;</button>` : ''}
+      </td>
+    </tr>`
+    )
+    .join('');
+
+  tbody.querySelectorAll('[data-action="row-menu"]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const expenseId = btn.dataset.id;
+      const items = [
+        { label: 'Edit', onClick: () => openAddEditExpenseModal(expenseId) },
+        { label: 'Delete', danger: true, onClick: () => confirmDeleteExpense(expenseId) }
+      ];
+      toggleActionMenu(btn, items);
+    });
+  });
+}
+
+async function confirmDeleteExpense(expenseId) {
+  const expense = getExpense(expenseId);
+  if (!expense) return;
+  if (!confirm(`Delete expense "${expense.description}" (${formatCurrency(expense.amount)})? This cannot be undone.`)) return;
+  try {
+    await deleteExpense(expenseId);
+    renderExpensesTableBody();
+  } catch (err) {
+    alert('Delete failed: ' + err.message);
+  }
+}
+
+function openAddEditExpenseModal(expenseId = null) {
+  const editing = Boolean(expenseId);
+  const expense = editing ? getExpense(expenseId) : null;
+
+  openModal(`
+    <h3>${editing ? 'Edit Expense' : 'Add Expense'}</h3>
+    <form id="form-expense">
+      <label>Description
+        <input type="text" id="fe-description" value="${editing ? escapeHtml(expense.description) : ''}" required />
+      </label>
+      <label>Amount
+        <input type="number" id="fe-amount" min="0" step="0.01" value="${editing ? expense.amount : ''}" required />
+      </label>
+      <label>Category (optional)
+        <input type="text" id="fe-category" placeholder="e.g. Electricity, Event, Repair" value="${editing ? escapeHtml(expense.category) : ''}" />
+      </label>
+      <label>Date
+        <input type="date" id="fe-date" value="${editing ? expense.spentOn : todayISO()}" required />
+      </label>
+      <label>Note (optional)
+        <input type="text" id="fe-note" value="${editing ? escapeHtml(expense.note) : ''}" />
+      </label>
+      <p class="form-error" id="fe-error"></p>
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" id="fe-cancel">Cancel</button>
+        <button type="submit" class="btn-primary">${editing ? 'Save Changes' : 'Add Expense'}</button>
+      </div>
+    </form>
+  `);
+
+  el('fe-cancel').addEventListener('click', closeModal);
+  el('form-expense').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fields = {
+      description: el('fe-description').value,
+      amount: el('fe-amount').value,
+      category: el('fe-category').value,
+      spentOn: el('fe-date').value,
+      note: el('fe-note').value
+    };
+    if (!fields.description.trim()) {
+      el('fe-error').textContent = 'Description is required.';
+      return;
+    }
+    if (!fields.amount || Number(fields.amount) <= 0) {
+      el('fe-error').textContent = 'Amount must be greater than zero.';
+      return;
+    }
+
+    try {
+      if (editing) {
+        await updateExpense(expenseId, fields);
+      } else {
+        await addExpense(fields);
+      }
+      closeModal();
+      refreshCurrentPage();
+    } catch (err) {
+      el('fe-error').textContent = 'Save failed: ' + err.message;
+    }
+  });
 }
 
 // ---------- Settings ----------

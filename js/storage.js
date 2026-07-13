@@ -6,6 +6,7 @@
 //   meta/settings                 -> { committeeName, ratePerMember, receiptPrefix, receiptCounter }
 //   families/{id}                 -> family fields
 //   payments/{id}                 -> payment fields
+//   expenses/{id}                 -> expense fields
 
 const LEGACY_STORAGE_KEY = 'mohalla_committee_data_v1';
 
@@ -22,7 +23,8 @@ function getDefaultSettings() {
 const data = {
   settings: getDefaultSettings(),
   families: [],
-  payments: []
+  payments: [],
+  expenses: []
 };
 
 function settingsRef() {
@@ -45,6 +47,11 @@ function startDataSync(onChange) {
 
   onSnapshot(collection(db, 'payments'), (snap) => {
     data.payments = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    onChange();
+  });
+
+  onSnapshot(collection(db, 'expenses'), (snap) => {
+    data.expenses = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
     onChange();
   });
 }
@@ -77,7 +84,8 @@ async function eraseAllCloudData() {
   const { db, doc, writeBatch, setDoc } = window.fb;
   const refs = [
     ...data.families.map((f) => doc(db, 'families', f.id)),
-    ...data.payments.map((p) => doc(db, 'payments', p.id))
+    ...data.payments.map((p) => doc(db, 'payments', p.id)),
+    ...data.expenses.map((e) => doc(db, 'expenses', e.id))
   ];
   for (let i = 0; i < refs.length; i += 400) {
     const batch = writeBatch(db);
@@ -94,7 +102,8 @@ async function writeBackupToCloud(parsed) {
 
   const writes = [
     ...(parsed.families || []).map((f) => ({ ref: doc(db, 'families', f.id || generateId('fam')), fields: stripId(f) })),
-    ...(parsed.payments || []).map((p) => ({ ref: doc(db, 'payments', p.id || generateId('pay')), fields: stripId(p) }))
+    ...(parsed.payments || []).map((p) => ({ ref: doc(db, 'payments', p.id || generateId('pay')), fields: stripId(p) })),
+    ...(parsed.expenses || []).map((e) => ({ ref: doc(db, 'expenses', e.id || generateId('exp')), fields: stripId(e) }))
   ];
   for (let i = 0; i < writes.length; i += 400) {
     const batch = writeBatch(db);

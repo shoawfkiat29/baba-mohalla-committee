@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=20260713a" />
+  <link rel="stylesheet" href="css/style.css?v=20260714a" />
 </head>
 <body>
 
@@ -53,6 +53,7 @@
       <nav class="app-nav">
         <button id="tab-dashboard" class="nav-tab">Dashboard</button>
         <button id="tab-families" class="nav-tab">Families</button>
+        <button id="tab-expenses" class="nav-tab">Expenses</button>
         <button id="tab-settings" class="nav-tab hidden">Settings</button>
         <button id="btn-logout" class="nav-tab logout">Logout</button>
       </nav>
@@ -62,6 +63,7 @@
       <section id="page-dashboard" class="page"></section>
       <section id="page-families" class="page hidden"></section>
       <section id="page-family-detail" class="page hidden"></section>
+      <section id="page-expenses" class="page hidden"></section>
       <section id="page-settings" class="page hidden"></section>
     </main>
   </div>
@@ -71,15 +73,16 @@
     <div id="modal-content" class="modal-content"></div>
   </div>
 
-  <script src="js/firebase-config.js?v=20260713a"></script>
-  <script type="module" src="js/firebase.js?v=20260713a"></script>
-  <script src="js/utils.js?v=20260713a"></script>
-  <script src="js/storage.js?v=20260713a"></script>
-  <script src="js/auth.js?v=20260713a"></script>
-  <script src="js/families.js?v=20260713a"></script>
-  <script src="js/payments.js?v=20260713a"></script>
-  <script src="js/whatsapp.js?v=20260713a"></script>
-  <script src="js/app.js?v=20260713a"></script>
+  <script src="js/firebase-config.js?v=20260714a"></script>
+  <script type="module" src="js/firebase.js?v=20260714a"></script>
+  <script src="js/utils.js?v=20260714a"></script>
+  <script src="js/storage.js?v=20260714a"></script>
+  <script src="js/auth.js?v=20260714a"></script>
+  <script src="js/families.js?v=20260714a"></script>
+  <script src="js/payments.js?v=20260714a"></script>
+  <script src="js/expenses.js?v=20260714a"></script>
+  <script src="js/whatsapp.js?v=20260714a"></script>
+  <script src="js/app.js?v=20260714a"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => navigator.serviceWorker.register('sw.js'));
