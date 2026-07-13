@@ -209,6 +209,7 @@ function navigateTo(page, params = {}) {
 function renderDashboard() {
   const admin = isAdmin();
   const pending = getPendingFamiliesForMonth(dashboardYear, dashboardMonth);
+  const paid = getPaidFamiliesForMonth(dashboardYear, dashboardMonth);
 
   el('page-dashboard').innerHTML = `
     <div class="page-header">
@@ -243,6 +244,28 @@ function renderDashboard() {
         <div class="stat-value">${pending.length}</div>
       </div>
     </div>
+
+    <h3>Families paid for ${MONTH_NAMES[dashboardMonth - 1]} ${dashboardYear}</h3>
+    ${
+      paid.length === 0
+        ? '<p class="empty-note">No one has paid for this month yet.</p>'
+        : `<div class="table-wrap"><table class="data-table">
+            <thead><tr><th>Head Name</th><th>Phone</th><th>Members</th><th>Amount</th></tr></thead>
+            <tbody>
+              ${paid
+                .map(
+                  (f) => `
+                <tr>
+                  <td><button class="row-name-link" data-action="open-family" data-id="${f.id}">${escapeHtml(f.headName)}</button></td>
+                  <td>${escapeHtml(f.phone)}</td>
+                  <td>${f.members}</td>
+                  <td>${formatCurrency(f.members * data.settings.ratePerMember)}</td>
+                </tr>`
+                )
+                .join('')}
+            </tbody>
+          </table></div>`
+    }
 
     <h3>Families pending for ${MONTH_NAMES[dashboardMonth - 1]} ${dashboardYear}</h3>
     ${

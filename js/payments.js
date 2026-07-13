@@ -187,3 +187,10 @@ function getPendingFamiliesForMonth(year, month) {
     return !paid.has(month);
   });
 }
+
+function getPaidFamiliesForMonth(year, month) {
+  return data.families.filter((f) => {
+    const paid = getPaidMonthsForYear(f.id, year);
+    return paid.has(month);
+  });
+}
