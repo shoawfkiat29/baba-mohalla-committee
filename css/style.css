@@ -645,10 +645,10 @@ label input, label select, label textarea { margin-top: 5px; }
   /* Expenses table has different column meanings (date/description/category/
      amount) than the families-shaped tables above, so it needs its own
      column widths instead of the generic nth-child rules. */
-  .expenses-table th:nth-child(1), .expenses-table td:nth-child(1) { flex: 1 1 0; text-align: left; }
-  .expenses-table th:nth-child(2), .expenses-table td:nth-child(2) { flex: 1.8 1 0; text-align: left; }
-  .expenses-table th:nth-child(3), .expenses-table td:nth-child(3) { flex: 1 1 0; text-align: left; }
-  .expenses-table th:nth-child(4), .expenses-table td:nth-child(4) { flex: 0.9 1 0; text-align: right; }
+  .expenses-table th:nth-child(1), .expenses-table td:nth-child(1) { flex: 0.7 1 0; text-align: left; }
+  .expenses-table th:nth-child(2), .expenses-table td:nth-child(2) { flex: 1.7 1 0; text-align: left; }
+  .expenses-table th:nth-child(3), .expenses-table td:nth-child(3) { flex: 1.15 1 0; text-align: left; }
+  .expenses-table th:nth-child(4), .expenses-table td:nth-child(4) { flex: 1 1 0; text-align: right; }
 
   /* Transaction history table: date/for/amount/receipt-no, also different
      from the families-shaped tables' column meanings. */
