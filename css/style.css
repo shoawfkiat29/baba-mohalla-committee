@@ -361,7 +361,7 @@ label input, label select, label textarea { margin-top: 5px; }
 .data-table tbody tr { transition: background 0.1s ease; }
 .data-table tbody tr:hover { background: #f8fbfa; }
 
-#family-search { max-width: 340px; margin-bottom: 16px; }
+#family-search, #expense-search { max-width: 340px; margin-bottom: 16px; }
 
 /* ---------- Row action menu (kebab button + popover) ---------- */
 
