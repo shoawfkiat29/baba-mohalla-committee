@@ -211,7 +211,6 @@ function navigateTo(page, params = {}) {
 // ---------- Dashboard ----------
 
 function renderDashboard() {
-  const admin = isAdmin();
   const pending = getPendingFamiliesForMonth(dashboardYear, dashboardMonth);
   const paid = getPaidFamiliesForMonth(dashboardYear, dashboardMonth);
 
@@ -262,7 +261,7 @@ function renderDashboard() {
       paid.length === 0
         ? '<p class="empty-note">No one has paid for this month yet.</p>'
         : `<div class="table-wrap"><table class="data-table">
-            <thead><tr><th>Head Name</th><th>Phone</th><th>Mem.</th><th>Amount</th><th class="col-action"></th></tr></thead>
+            <thead><tr><th>Head Name</th><th>Phone</th><th>Mem.</th><th>Amount</th></tr></thead>
             <tbody>
               ${paid
                 .map(
@@ -272,7 +271,6 @@ function renderDashboard() {
                   <td>${escapeHtml(f.phone)}</td>
                   <td>${f.members}</td>
                   <td>${formatCurrency(f.members * data.settings.ratePerMember)}</td>
-                  <td class="col-action"></td>
                 </tr>`
                 )
                 .join('')}
@@ -285,7 +283,7 @@ function renderDashboard() {
       pending.length === 0
         ? '<p class="empty-note">Everyone has paid for this month. 🎉</p>'
         : `<div class="table-wrap"><table class="data-table">
-            <thead><tr><th>Head Name</th><th>Phone</th><th>Mem.</th><th>Amount Due</th><th class="col-action"></th></tr></thead>
+            <thead><tr><th>Head Name</th><th>Phone</th><th>Mem.</th><th>Amount Due</th></tr></thead>
             <tbody>
               ${pending
                 .map(
@@ -295,9 +293,6 @@ function renderDashboard() {
                   <td>${escapeHtml(f.phone)}</td>
                   <td>${f.members}</td>
                   <td>${formatCurrency(f.members * data.settings.ratePerMember)}</td>
-                  <td class="col-action">
-                    ${admin ? `<button class="kebab-btn" data-action="row-menu" data-id="${f.id}" aria-label="Actions">&#8942;</button>` : ''}
-                  </td>
                 </tr>`
                 )
                 .join('')}
@@ -317,23 +312,6 @@ function renderDashboard() {
 
   el('page-dashboard').querySelectorAll('[data-action="open-family"]').forEach((btn) => {
     btn.addEventListener('click', () => navigateTo('family-detail', { familyId: btn.dataset.id, year: dashboardYear }));
-  });
-
-  el('page-dashboard').querySelectorAll('[data-action="row-menu"]').forEach((btn) => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const familyId = btn.dataset.id;
-      const items = [
-        {
-          label: 'Record Payment',
-          onClick: () => {
-            navigateTo('family-detail', { familyId, year: dashboardYear });
-            openRecordPaymentModal(familyId, dashboardYear);
-          }
-        }
-      ];
-      toggleActionMenu(btn, items);
-    });
   });
 }
 
