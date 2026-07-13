@@ -551,7 +551,7 @@ function renderExpensesPage() {
       </div>
     </div>
     <input type="text" id="expense-search" placeholder="Search by description or category..." value="${escapeHtml(expenseSearchQuery)}" />
-    <div class="table-wrap"><table class="data-table">
+    <div class="table-wrap"><table class="data-table expenses-table">
       <thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Amount</th><th></th></tr></thead>
       <tbody id="expenses-tbody"></tbody>
     </table></div>

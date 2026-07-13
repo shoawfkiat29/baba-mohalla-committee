@@ -643,6 +643,14 @@ label input, label select, label textarea { margin-top: 5px; }
     text-align: right;
   }
 
+  /* Expenses table has different column meanings (date/description/category/
+     amount) than the families-shaped tables above, so it needs its own
+     column widths instead of the generic nth-child rules. */
+  .expenses-table th:nth-child(1), .expenses-table td:nth-child(1) { flex: 1 1 0; text-align: left; }
+  .expenses-table th:nth-child(2), .expenses-table td:nth-child(2) { flex: 1.8 1 0; text-align: left; }
+  .expenses-table th:nth-child(3), .expenses-table td:nth-child(3) { flex: 1 1 0; text-align: left; }
+  .expenses-table th:nth-child(4), .expenses-table td:nth-child(4) { flex: 0.9 1 0; text-align: right; }
+
   .kebab-btn { padding: 2px 6px; font-size: 1.05rem; }
   .login-card { padding: 32px 24px; }
 }
