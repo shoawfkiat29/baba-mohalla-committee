@@ -15,7 +15,8 @@ function getDefaultSettings() {
     committeeName: 'Baba Mohalla Committee',
     ratePerMember: 50,
     receiptPrefix: 'MC',
-    receiptCounter: 1
+    receiptCounter: 1,
+    openingBalance: 0
   };
 }
 

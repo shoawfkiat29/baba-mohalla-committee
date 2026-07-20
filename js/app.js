@@ -678,6 +678,18 @@ function renderSettingsPage() {
     </div>
 
     <div class="settings-section">
+      <h3>Opening Balance</h3>
+      <p class="muted">Money already collected before using this app (e.g. cash on hand today). It's added on top of everything recorded here for "Collected All-Time" and "Balance in Hand" on the Dashboard.</p>
+      <form id="form-opening-balance">
+        <label>Opening Balance (₹)
+          <input type="number" id="set-opening-balance" value="${data.settings.openingBalance}" min="0" required />
+        </label>
+        <button type="submit" class="btn-primary">Save</button>
+        <span class="save-feedback" id="opening-balance-save-feedback"></span>
+      </form>
+    </div>
+
+    <div class="settings-section">
       <h3>Admin Account</h3>
       <p class="muted">Logged in as <strong>${escapeHtml(adminEmail())}</strong></p>
       <form id="form-password">
@@ -715,6 +727,20 @@ function renderSettingsPage() {
         committeeName: el('set-committee-name').value.trim() || data.settings.committeeName,
         ratePerMember: Number(el('set-rate').value) || data.settings.ratePerMember
       });
+      feedback.textContent = 'Saved!';
+      feedback.className = 'save-feedback';
+    } catch (err) {
+      feedback.textContent = 'Save failed: ' + err.message;
+      feedback.className = 'save-feedback error';
+    }
+    setTimeout(() => (feedback.textContent = ''), 3000);
+  });
+
+  el('form-opening-balance').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const feedback = el('opening-balance-save-feedback');
+    try {
+      await saveSettings({ openingBalance: Number(el('set-opening-balance').value) || 0 });
       feedback.textContent = 'Saved!';
       feedback.className = 'save-feedback';
     } catch (err) {

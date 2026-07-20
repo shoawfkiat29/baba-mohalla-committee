@@ -164,8 +164,11 @@ function getPayment(id) {
   return data.payments.find((p) => p.id === id) || null;
 }
 
+// Includes the opening balance (money already collected before this app was
+// used), so this is the real running total, not just what the app recorded.
 function totalCollectedAllTime() {
-  return data.payments.reduce((sum, p) => sum + cashCollectedOf(p), 0);
+  const opening = Number(data.settings.openingBalance) || 0;
+  return opening + data.payments.reduce((sum, p) => sum + cashCollectedOf(p), 0);
 }
 
 function totalCollectedForYear(year) {
