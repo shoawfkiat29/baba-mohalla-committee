@@ -247,8 +247,17 @@ label input, label select, label textarea { margin-top: 5px; }
 }
 .nav-tab:hover { color: #fff; background: rgba(255, 255, 255, 0.1); }
 .nav-tab.active { color: var(--primary-deep); background: #fff; box-shadow: var(--shadow-sm); }
-.nav-tab.logout { color: rgba(255, 255, 255, 0.6); }
-.nav-tab.logout:hover { color: #fff; background: rgba(220, 38, 38, 0.45); }
+
+.logout-btn {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.7);
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: clamp(0.78rem, 3vw, 0.85rem);
+  flex-shrink: 0;
+}
+.logout-btn:hover { color: #fff; background: rgba(220, 38, 38, 0.45); }
 
 .app-main {
   max-width: 1020px;
@@ -590,8 +599,6 @@ label input, label select, label textarea { margin-top: 5px; }
   }
   .nav-tab:hover { color: var(--primary-dark); background: transparent; }
   .nav-tab.active { color: #fff; background: var(--primary); }
-  .nav-tab.logout { color: var(--danger); }
-  .nav-tab.logout:hover { color: var(--danger); background: var(--danger-soft); }
 
   .app-main { padding: clamp(14px, 4.5vw, 20px) clamp(12px, 4vw, 16px) 110px; }
   .stat-cards { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
