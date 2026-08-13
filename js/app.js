@@ -213,6 +213,7 @@ function navigateTo(page, params = {}) {
 function renderDashboard() {
   const pending = getPendingFamiliesForMonth(dashboardYear, dashboardMonth);
   const paid = getPaidFamiliesForMonth(dashboardYear, dashboardMonth);
+  const lastCollection = lastCollectionInfo();
 
   el('page-dashboard').innerHTML = `
     <div class="page-header">
@@ -235,8 +236,8 @@ function renderDashboard() {
         <div class="stat-value">${data.families.length}</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">Collected Today (${formatDateForDisplay(todayISO())})</div>
-        <div class="stat-value">${formatCurrency(totalCollectedToday())}</div>
+        <div class="stat-label">${lastCollection.date ? `Collected at Last Meeting (${formatDateForDisplay(lastCollection.date)})` : 'Collected at Last Meeting'}</div>
+        <div class="stat-value">${formatCurrency(lastCollection.total)}</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">Collected in ${MONTH_NAMES[dashboardMonth - 1]} ${dashboardYear}</div>

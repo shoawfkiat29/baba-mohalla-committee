@@ -175,11 +175,16 @@ function totalCollectedForYear(year) {
   return data.payments.filter((p) => p.year === year).reduce((sum, p) => sum + cashCollectedOf(p), 0);
 }
 
-// Cash collected on today's actual calendar date, regardless of which
-// month/year the payment itself covers.
-function totalCollectedToday() {
-  const today = todayISO();
-  return data.payments.filter((p) => p.paidOn === today).reduce((sum, p) => sum + cashCollectedOf(p), 0);
+// Total cash collected on the most recent date any payment was recorded -
+// i.e. the last meeting's collection. Unlike a "today" figure, this stays
+// meaningful in between meetings instead of resetting to zero the next day.
+function lastCollectionInfo() {
+  if (data.payments.length === 0) return { date: null, total: 0 };
+  const lastDate = data.payments.reduce((latest, p) => (p.paidOn > latest ? p.paidOn : latest), data.payments[0].paidOn);
+  const total = data.payments
+    .filter((p) => p.paidOn === lastDate)
+    .reduce((sum, p) => sum + cashCollectedOf(p), 0);
+  return { date: lastDate, total };
 }
 
 // Value of dues settled for one specific month (not the cash timeline - a
