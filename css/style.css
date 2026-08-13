@@ -347,7 +347,39 @@ label input, label select, label textarea { margin-top: 5px; }
   width: 100%;
   border-collapse: collapse;
   white-space: nowrap;
+  table-layout: fixed;
 }
+
+/* Every <table class="data-table"> sizes its own columns independently based
+   on its own row content (native browser table layout), so two separate
+   tables with identical headers (e.g. paid vs pending families) don't
+   naturally line up. Fixed, shared column widths per table shape keep them
+   aligned regardless of content length. Base shape (no action column): Head
+   Name / Phone / Mem. / Amount - used by the Dashboard's paid & pending
+   tables, which share this exact shape and must match each other. */
+.data-table th:nth-child(1), .data-table td:nth-child(1) { width: 36%; }
+.data-table th:nth-child(2), .data-table td:nth-child(2) { width: 24%; }
+.data-table th:nth-child(3), .data-table td:nth-child(3) { width: 14%; text-align: center; }
+.data-table th:nth-child(4), .data-table td:nth-child(4) { width: 26%; text-align: right; }
+
+/* Action column (kebab menu) - fixed width regardless of table shape, so
+   the other columns above always have the same amount of space reserved. */
+.data-table th.col-action, .data-table td.col-action { width: 56px; text-align: center; }
+
+.families-table th:nth-child(1), .families-table td:nth-child(1) { width: 33%; }
+.families-table th:nth-child(2), .families-table td:nth-child(2) { width: 22%; }
+.families-table th:nth-child(3), .families-table td:nth-child(3) { width: 13%; text-align: center; }
+.families-table th:nth-child(4), .families-table td:nth-child(4) { width: 24%; text-align: right; }
+
+.expenses-table th:nth-child(1), .expenses-table td:nth-child(1) { width: 14%; }
+.expenses-table th:nth-child(2), .expenses-table td:nth-child(2) { width: 32%; }
+.expenses-table th:nth-child(3), .expenses-table td:nth-child(3) { width: 22%; }
+.expenses-table th:nth-child(4), .expenses-table td:nth-child(4) { width: 20%; text-align: right; }
+
+.transactions-table th:nth-child(1), .transactions-table td:nth-child(1) { width: 16%; }
+.transactions-table th:nth-child(2), .transactions-table td:nth-child(2) { width: 30%; }
+.transactions-table th:nth-child(3), .transactions-table td:nth-child(3) { width: 18%; text-align: right; }
+.transactions-table th:nth-child(4), .transactions-table td:nth-child(4) { width: 24%; text-align: right; }
 
 .data-table thead th {
   background: #f6f9f8;

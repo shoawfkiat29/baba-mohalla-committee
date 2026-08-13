@@ -330,7 +330,7 @@ function renderFamiliesPage() {
       ${admin ? `<button class="btn-primary" id="btn-add-family">+ Add Family</button>` : ''}
     </div>
     <input type="text" id="family-search" placeholder="Search by name or phone..." value="${escapeHtml(familySearchQuery)}" />
-    <div class="table-wrap"><table class="data-table">
+    <div class="table-wrap"><table class="data-table families-table">
       <thead><tr><th>Head Name</th><th>Phone</th><th>Mem.</th><th>Amount / Month</th><th class="col-action"></th></tr></thead>
       <tbody id="families-tbody"></tbody>
     </table></div>
