@@ -175,6 +175,13 @@ function totalCollectedForYear(year) {
   return data.payments.filter((p) => p.year === year).reduce((sum, p) => sum + cashCollectedOf(p), 0);
 }
 
+// Cash collected on today's actual calendar date, regardless of which
+// month/year the payment itself covers.
+function totalCollectedToday() {
+  const today = todayISO();
+  return data.payments.filter((p) => p.paidOn === today).reduce((sum, p) => sum + cashCollectedOf(p), 0);
+}
+
 // Value of dues settled for one specific month (not the cash timeline - a
 // single payment can cover several months, so this counts each month's
 // share of it, regardless of when or via advance the money came in).

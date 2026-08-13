@@ -235,6 +235,10 @@ function renderDashboard() {
         <div class="stat-value">${data.families.length}</div>
       </div>
       <div class="stat-card">
+        <div class="stat-label">Collected Today (${formatDateForDisplay(todayISO())})</div>
+        <div class="stat-value">${formatCurrency(totalCollectedToday())}</div>
+      </div>
+      <div class="stat-card">
         <div class="stat-label">Collected in ${MONTH_NAMES[dashboardMonth - 1]} ${dashboardYear}</div>
         <div class="stat-value">${formatCurrency(totalDuesForMonth(dashboardYear, dashboardMonth))}</div>
       </div>
